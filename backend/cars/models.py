@@ -42,3 +42,25 @@ class Car(models.Model):
 
     def __str__(self):
         return f'{self.brand} {self.model} {self.year}'
+
+
+class CarLike(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='car_likes',
+    )
+    car = models.ForeignKey(
+        Car,
+        on_delete=models.CASCADE,
+        related_name='likes',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'car'], name='unique_user_car_like'),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} liked {self.car_id}'

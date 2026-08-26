@@ -1,6 +1,9 @@
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .models import Car
+from .models import Car, CarLike
 from .pagination import CarPagination
 from .permissions import IsOwnerOrReadOnly
 from .serializers import CarSerializer
@@ -45,3 +48,39 @@ class CarViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    @action(
+        detail=True,
+        methods=['post', 'delete'],
+        permission_classes=[IsAuthenticated],
+        url_path='like',
+    )
+    def like(self, request, pk=None):
+        car = self.get_object()
+
+        if request.method == 'POST':
+            like, created = CarLike.objects.get_or_create(user=request.user, car=car)
+
+            if not created:
+                return Response(
+                    {'detail': 'You already liked this car.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            return Response(
+                {'liked': True, 'likes_count': car.likes.count()},
+                status=status.HTTP_201_CREATED,
+            )
+
+        deleted_count, _ = CarLike.objects.filter(user=request.user, car=car).delete()
+
+        if deleted_count == 0:
+            return Response(
+                {'detail': 'You have not liked this car yet.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {'liked': False, 'likes_count': car.likes.count()},
+            status=status.HTTP_200_OK,
+        )

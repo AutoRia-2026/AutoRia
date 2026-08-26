@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from .models import Car
+from .models import Car, CarLike
 
 
 class CarFilterTests(APITestCase):
@@ -117,3 +117,50 @@ class CarPaginationTests(APITestCase):
         self.assertIsNone(response.data['next'])
         self.assertIsNotNone(response.data['previous'])
         self.assertEqual(len(response.data['results']), 5)
+
+
+class CarLikeTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='likeuser',
+            email='like@example.com',
+            password='StrongPass123',
+        )
+        self.car = Car.objects.create(
+            owner=self.user,
+            brand='BMW',
+            model='X5',
+            year=2020,
+            mileage=60000,
+            price='35000.00',
+            transmission='automatic',
+            fuel_type='diesel',
+        )
+
+    def test_user_can_like_car_once(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(f'/api/cars/{self.car.id}/like/')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data['liked'])
+        self.assertEqual(CarLike.objects.count(), 1)
+
+    def test_user_cannot_like_same_car_twice(self):
+        self.client.force_authenticate(user=self.user)
+        self.client.post(f'/api/cars/{self.car.id}/like/')
+
+        response = self.client.post(f'/api/cars/{self.car.id}/like/')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(CarLike.objects.count(), 1)
+
+    def test_user_can_remove_like(self):
+        self.client.force_authenticate(user=self.user)
+        CarLike.objects.create(user=self.user, car=self.car)
+
+        response = self.client.delete(f'/api/cars/{self.car.id}/like/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['liked'])
+        self.assertEqual(CarLike.objects.count(), 0)
