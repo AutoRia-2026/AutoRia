@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 
 from .models import Car
+from .pagination import CarPagination
 from .permissions import IsOwnerOrReadOnly
 from .serializers import CarSerializer
 
@@ -9,6 +10,7 @@ class CarViewSet(viewsets.ModelViewSet):
     queryset = Car.objects.all()
     serializer_class = CarSerializer
     permission_classes = [IsOwnerOrReadOnly]
+    pagination_class = CarPagination
 
     def get_queryset(self):
         queryset = Car.objects.all()
