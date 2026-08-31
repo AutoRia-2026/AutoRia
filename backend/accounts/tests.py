@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.test import APITestCase
+from rest_framework.authtoken.models import Token
 
 from .models import EmailVerificationCode, SellerProfile
 
@@ -94,3 +95,32 @@ class AccountVerificationTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(user.check_password('NewStrongPass123'))
+
+    def test_user_can_update_profile(self):
+        user = get_user_model().objects.create_user(
+            username='profileuser',
+            email='profile@example.com',
+            password='StrongPass123',
+        )
+        token = Token.objects.create(user=user)
+
+        response = self.client.patch(
+            '/api/auth/me/',
+            {
+                'first_name': 'Ivan',
+                'last_name': 'Seller',
+                'phone': '+380671112233',
+                'city': 'Lviv',
+            },
+            HTTP_AUTHORIZATION=f'Token {token.key}',
+            format='json',
+        )
+
+        user.refresh_from_db()
+        profile = SellerProfile.objects.get(user=user)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(user.first_name, 'Ivan')
+        self.assertEqual(user.last_name, 'Seller')
+        self.assertEqual(profile.phone, '+380671112233')
+        self.assertEqual(profile.city, 'Lviv')

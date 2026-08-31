@@ -21,6 +21,42 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'seller_profile']
 
 
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    city = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'city']
+
+    def validate_username(self, value):
+        if User.objects.exclude(pk=self.instance.pk).filter(username__iexact=value).exists():
+            raise serializers.ValidationError('User with this username already exists.')
+        return value
+
+    def validate_email(self, value):
+        if User.objects.exclude(pk=self.instance.pk).filter(email__iexact=value).exists():
+            raise serializers.ValidationError('User with this email already exists.')
+        return value.lower()
+
+    def update(self, instance, validated_data):
+        phone = validated_data.pop('phone', None)
+        city = validated_data.pop('city', None)
+
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+
+        profile, _ = SellerProfile.objects.get_or_create(user=instance)
+        if phone is not None:
+            profile.phone = phone
+        if city is not None:
+            profile.city = city
+        profile.save()
+
+        return instance
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     phone = serializers.CharField(required=False, allow_blank=True, write_only=True)

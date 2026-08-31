@@ -17,6 +17,7 @@ from .serializers import (
     LoginSerializer,
     RegisterSerializer,
     ResetPasswordSerializer,
+    UserProfileUpdateSerializer,
     UserSerializer,
 )
 
@@ -107,6 +108,16 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = UserProfileUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data)
 
 
 class ForgotPasswordView(APIView):

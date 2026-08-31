@@ -4,8 +4,9 @@ import './App.css'
 
 const API_URL = 'http://127.0.0.1:8000/api'
 const TOKEN_KEY = 'autoria_token'
+const REMEMBER_KEY = 'autoria_remember'
 
-type Page = 'home' | 'search' | 'detail'
+type Page = 'auth' | 'home' | 'search' | 'detail' | 'profile'
 type AuthScreen =
   | 'login'
   | 'signup-info'
@@ -22,6 +23,10 @@ type User = {
   email: string
   first_name: string
   last_name: string
+  seller_profile?: {
+    phone: string
+    city: string
+  } | null
 }
 
 type AuthResponse = {
@@ -119,7 +124,9 @@ function fallbackImage(car: Car) {
 }
 
 function App() {
-  const [page, setPage] = useState<Page>('home')
+  const rememberedToken =
+    localStorage.getItem(REMEMBER_KEY) === 'true' ? localStorage.getItem(TOKEN_KEY) || '' : ''
+  const [page, setPage] = useState<Page>(rememberedToken ? 'home' : 'auth')
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login')
   const [authOpen, setAuthOpen] = useState(false)
@@ -128,7 +135,8 @@ function App() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [code, setCode] = useState('')
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '')
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem(REMEMBER_KEY) === 'true')
+  const [token, setToken] = useState(rememberedToken)
   const [user, setUser] = useState<User | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -145,6 +153,17 @@ function App() {
   const [ordering, setOrdering] = useState('-created_at')
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [refreshIndex, setRefreshIndex] = useState(0)
+  const [profileForm, setProfileForm] = useState({
+    username: '',
+    email: '',
+    first_name: '',
+    last_name: '',
+    phone: '',
+    city: '',
+  })
+  const [profileMessage, setProfileMessage] = useState('')
+  const [profileError, setProfileError] = useState('')
+  const [isProfileSaving, setIsProfileSaving] = useState(false)
 
   const brands = useMemo(
     () => Array.from(new Set(cars.map((car) => car.brand))).sort(),
@@ -157,8 +176,13 @@ function App() {
   const searchHeading = search.trim() || brand || 'Cars'
 
   useEffect(() => {
+    if (localStorage.getItem(REMEMBER_KEY) !== 'true') {
+      localStorage.removeItem(TOKEN_KEY)
+    }
+
     if (!token) {
       setUser(null)
+      setPage('auth')
       return
     }
 
@@ -170,10 +194,27 @@ function App() {
       .then((data) => setUser(data as User))
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(REMEMBER_KEY)
         setToken('')
         setUser(null)
+        setPage('auth')
       })
   }, [token])
+
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+
+    setProfileForm({
+      username: user.username || '',
+      email: user.email || '',
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      phone: user.seller_profile?.phone || '',
+      city: user.seller_profile?.city || '',
+    })
+  }, [user])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -280,11 +321,18 @@ function App() {
         body: JSON.stringify({ email, password }),
       })) as AuthResponse
 
-      localStorage.setItem(TOKEN_KEY, data.token)
+      if (rememberMe) {
+        localStorage.setItem(TOKEN_KEY, data.token)
+        localStorage.setItem(REMEMBER_KEY, 'true')
+      } else {
+        localStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(REMEMBER_KEY)
+      }
       setToken(data.token)
       setUser(data.user)
       setPassword('')
       setAuthOpen(false)
+      setPage('home')
     } catch (requestError) {
       setError(parseApiError(requestError))
     } finally {
@@ -412,8 +460,41 @@ function App() {
     }
 
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REMEMBER_KEY)
     setToken('')
     setUser(null)
+    setRememberMe(false)
+    setPage('auth')
+  }
+
+  async function submitProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!token) {
+      setPage('auth')
+      return
+    }
+
+    setProfileMessage('')
+    setProfileError('')
+    setIsProfileSaving(true)
+
+    try {
+      const data = (await apiRequest('/auth/me/', {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify(profileForm),
+      })) as User
+
+      setUser(data)
+      setProfileMessage('Profile updated')
+    } catch (requestError) {
+      setProfileError(parseApiError(requestError))
+    } finally {
+      setIsProfileSaving(false)
+    }
   }
 
   async function toggleLike(car: Car) {
@@ -508,14 +589,9 @@ function App() {
     )
   }
 
-  function renderAuthModal() {
-    if (!authOpen) {
-      return null
-    }
-
+  function renderAuthCard(showCloseButton = true) {
     return (
-      <div className="auth-overlay">
-        <section className="auth-card">
+      <section className="auth-card">
           {authScreen !== 'login' && (
             <button
               className="icon-button back-button"
@@ -526,14 +602,16 @@ function App() {
               &lsaquo;
             </button>
           )}
-          <button
-            className="icon-button close-button"
-            type="button"
-            aria-label="Close"
-            onClick={() => setAuthOpen(false)}
-          >
-            &times;
-          </button>
+          {showCloseButton && (
+            <button
+              className="icon-button close-button"
+              type="button"
+              aria-label="Close"
+              onClick={() => setAuthOpen(false)}
+            >
+              &times;
+            </button>
+          )}
 
           {authScreen === 'login' && (
             <form className="auth-content" onSubmit={submitLogin}>
@@ -560,7 +638,11 @@ function App() {
               </label>
               <div className="form-row">
                 <label className="checkbox-label">
-                  <input type="checkbox" />
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                  />
                   Remember me
                 </label>
                 <button className="link-button" type="button" onClick={() => changeAuthScreen('forgot')}>
@@ -770,9 +852,113 @@ function App() {
               </button>
             </form>
           )}
-        </section>
+      </section>
+    )
+  }
+
+  function renderAuthModal() {
+    if (!authOpen) {
+      return null
+    }
+
+    return (
+      <div className="auth-overlay">
+        {renderAuthCard()}
       </div>
     )
+  }
+
+  function renderProfilePage() {
+    if (!user) {
+      return null
+    }
+
+    return (
+      <section className="profile-page">
+        <div className="profile-header">
+          <div>
+            <span>Account</span>
+            <h1>{user.first_name || user.username}</h1>
+          </div>
+          <button type="button" onClick={logout}>Log out</button>
+        </div>
+
+        <form className="profile-panel" onSubmit={submitProfile}>
+          <div className="profile-section-title">
+            <h2>Profile settings</h2>
+            <p>Seller information is used on car pages and contacts.</p>
+          </div>
+
+          <div className="profile-grid">
+            <label>
+              Username
+              <input
+                type="text"
+                value={profileForm.username}
+                onChange={(event) => setProfileForm({ ...profileForm, username: event.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Email
+              <input
+                type="email"
+                value={profileForm.email}
+                onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })}
+                required
+              />
+            </label>
+            <label>
+              First name
+              <input
+                type="text"
+                value={profileForm.first_name}
+                onChange={(event) => setProfileForm({ ...profileForm, first_name: event.target.value })}
+              />
+            </label>
+            <label>
+              Last name
+              <input
+                type="text"
+                value={profileForm.last_name}
+                onChange={(event) => setProfileForm({ ...profileForm, last_name: event.target.value })}
+              />
+            </label>
+            <label>
+              Phone
+              <input
+                type="text"
+                value={profileForm.phone}
+                onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })}
+                placeholder="+380..."
+              />
+            </label>
+            <label>
+              City
+              <input
+                type="text"
+                value={profileForm.city}
+                onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })}
+                placeholder="Kyiv"
+              />
+            </label>
+          </div>
+
+          {profileMessage && <p className="form-success">{profileMessage}</p>}
+          {profileError && <p className="form-error">{profileError}</p>}
+
+          <div className="profile-actions">
+            <button className="primary-button" type="submit" disabled={isProfileSaving}>
+              {isProfileSaving ? 'Saving...' : 'Save changes'}
+            </button>
+          </div>
+        </form>
+      </section>
+    )
+  }
+
+  if (page === 'auth' && !user) {
+    return <main className="auth-page-shell">{renderAuthCard(false)}</main>
   }
 
   return (
@@ -799,7 +985,7 @@ function App() {
         <div className="header-actions">
           <button type="button" aria-label="Notifications">!</button>
           {user ? (
-            <button type="button" onClick={logout}>{user.first_name || user.username}</button>
+            <button type="button" onClick={() => setPage('profile')}>{user.first_name || user.username}</button>
           ) : (
             <button type="button" onClick={() => openAuth('login')}>Sign in</button>
           )}
@@ -807,7 +993,9 @@ function App() {
         </div>
       </header>
 
-      {page === 'detail' && selectedCar ? (
+      {page === 'profile' && user ? (
+        renderProfilePage()
+      ) : page === 'detail' && selectedCar ? (
         <section className="detail-page">
           <div className="detail-title">
             <button type="button" onClick={() => setPage(search || brand ? 'search' : 'home')}>Auctions</button>
