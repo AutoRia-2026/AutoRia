@@ -17,7 +17,9 @@ class CarViewSet(viewsets.ModelViewSet):
     pagination_class = CarPagination
 
     def get_queryset(self):
-        queryset = Car.objects.all()
+        return self.apply_query_params(Car.objects.all())
+
+    def apply_query_params(self, queryset):
         params = self.request.query_params
 
         brand = params.get('brand')
@@ -69,6 +71,23 @@ class CarViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by(ordering)
 
         return queryset
+
+    @action(
+        detail=False,
+        methods=['get'],
+        permission_classes=[IsAuthenticated],
+        url_path='my',
+    )
+    def my(self, request):
+        queryset = self.apply_query_params(Car.objects.filter(owner=request.user))
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)

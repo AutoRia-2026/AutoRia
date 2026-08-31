@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from .models import Car, CarLike
+from .models import Car, CarImage, CarLike
 
 
 class CarFilterTests(APITestCase):
@@ -210,3 +210,115 @@ class CarDetailTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['views_count'], 1)
         self.assertEqual(car.views_count, 1)
+
+
+class MyCarsTests(APITestCase):
+    def test_my_endpoint_returns_only_current_user_cars(self):
+        user = get_user_model().objects.create_user(
+            username='owneruser',
+            email='owner@example.com',
+            password='StrongPass123',
+        )
+        other_user = get_user_model().objects.create_user(
+            username='otheruser',
+            email='other@example.com',
+            password='StrongPass123',
+        )
+        Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+        Car.objects.create(
+            owner=other_user,
+            brand='Audi',
+            model='RS6',
+            year=2022,
+            mileage=12000,
+            price='120000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+
+        self.client.force_authenticate(user=user)
+        response = self.client.get('/api/cars/my/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['brand'], 'BMW')
+
+    def test_my_endpoint_requires_authentication(self):
+        response = self.client.get('/api/cars/my/')
+
+        self.assertEqual(response.status_code, 401)
+
+
+class CarImageTests(APITestCase):
+    def test_create_car_with_multiple_images(self):
+        user = get_user_model().objects.create_user(
+            username='imageuser',
+            email='image@example.com',
+            password='StrongPass123',
+        )
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            '/api/cars/',
+            {
+                'brand': 'Porsche',
+                'model': '718 Boxster',
+                'year': 2021,
+                'mileage': 6400,
+                'price': '52000.00',
+                'transmission': 'manual',
+                'fuel_type': 'petrol',
+                'description': 'Clean auction car.',
+                'images': [
+                    {'image_url': 'https://example.com/front.jpg', 'position': 0},
+                    {'image_url': 'https://example.com/interior.jpg', 'position': 1},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CarImage.objects.count(), 2)
+        self.assertEqual(len(response.data['images']), 2)
+
+    def test_update_car_replaces_images(self):
+        user = get_user_model().objects.create_user(
+            username='replaceuser',
+            email='replace@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+        CarImage.objects.create(car=car, image_url='https://example.com/old.jpg')
+        self.client.force_authenticate(user=user)
+
+        response = self.client.patch(
+            f'/api/cars/{car.id}/',
+            {
+                'images': [
+                    {'image_url': 'https://example.com/new.jpg', 'position': 0},
+                ],
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(car.images.count(), 1)
+        self.assertEqual(car.images.first().image_url, 'https://example.com/new.jpg')

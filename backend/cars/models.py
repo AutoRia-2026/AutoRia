@@ -65,3 +65,23 @@ class CarLike(models.Model):
 
     def __str__(self):
         return f'{self.user_id} liked {self.car_id}'
+
+
+class CarImage(models.Model):
+    car = models.ForeignKey(
+        Car,
+        on_delete=models.CASCADE,
+        related_name='images',
+    )
+    image_url = models.URLField()
+    position = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['position', 'id']
+        constraints = [
+            models.UniqueConstraint(fields=['car', 'position'], name='unique_car_image_position'),
+        ]
+
+    def __str__(self):
+        return f'{self.car_id} image {self.position}'
