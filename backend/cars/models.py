@@ -34,6 +34,7 @@ class Car(models.Model):
     fuel_type = models.CharField(max_length=20, choices=FUEL_CHOICES)
     image_url = models.URLField(blank=True)
     description = models.TextField(blank=True)
+    views_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

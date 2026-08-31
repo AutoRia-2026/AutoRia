@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import F, Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -59,6 +59,8 @@ class CarViewSet(viewsets.ModelViewSet):
             '-price',
             'year',
             '-year',
+            'mileage',
+            '-mileage',
             'created_at',
             '-created_at',
         }
@@ -70,6 +72,13 @@ class CarViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        Car.objects.filter(pk=instance.pk).update(views_count=F('views_count') + 1)
+        instance.refresh_from_db(fields=['views_count'])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     @action(
         detail=True,

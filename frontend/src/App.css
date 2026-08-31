@@ -22,6 +22,8 @@
 }
 
 .logo {
+  border: 0;
+  background: transparent;
   color: #ffffff;
   text-decoration: none;
   font-size: 30px;
@@ -29,6 +31,7 @@
   font-weight: 900;
   letter-spacing: -0.08em;
   transform: skewX(-10deg);
+  cursor: pointer;
 }
 
 .top-nav {
@@ -38,13 +41,19 @@
 }
 
 .top-nav a,
+.top-nav button,
 .site-footer a {
+  border: 0;
+  background: transparent;
   color: #d8d8d8;
   text-decoration: none;
   font-size: 12px;
+  font: inherit;
+  cursor: pointer;
 }
 
 .top-nav a:hover,
+.top-nav button:hover,
 .site-footer a:hover {
   color: #ffffff;
 }
@@ -262,7 +271,17 @@
   background: #161616;
 }
 
-.car-media img {
+.media-button {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.media-button img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -307,6 +326,21 @@
   color: #ffffff;
   font-size: 13px;
   line-height: 1.25;
+}
+
+.car-title-button {
+  min-height: 34px;
+  margin: 0 0 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
 }
 
 .car-body p {
@@ -382,6 +416,304 @@
   padding: 28px 18px 42px;
   margin-top: 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-logo {
+  align-self: start;
+  text-align: left;
+}
+
+.search-page {
+  padding-top: 26px;
+  min-height: 520px;
+}
+
+.search-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px 28px;
+}
+
+.search-heading h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.search-heading button {
+  min-height: 31px;
+  border: 0;
+  border-radius: 3px;
+  padding: 0 14px;
+  background: #ffd400;
+  color: #0b0b0b;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.search-results {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 850px;
+}
+
+.detail-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 14px 18px 0;
+}
+
+.detail-title {
+  display: grid;
+  gap: 3px;
+  padding: 6px 0 10px;
+}
+
+.detail-title button {
+  width: fit-content;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #8eb3ff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.detail-title h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.detail-title p {
+  margin: 0;
+  color: #a9a9a9;
+  font-size: 11px;
+}
+
+.detail-hero {
+  position: relative;
+  height: 438px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #171717;
+}
+
+.detail-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: brightness(0.65);
+}
+
+.stats-stack {
+  position: absolute;
+  top: 54px;
+  left: 18px;
+  display: grid;
+  width: 100px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: rgba(24, 24, 24, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.stats-stack span {
+  display: grid;
+  gap: 4px;
+  padding: 17px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #d9d9d9;
+  font-size: 11px;
+}
+
+.stats-stack span:last-child {
+  border-bottom: 0;
+}
+
+.stats-stack strong {
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.hero-note {
+  position: absolute;
+  top: 35px;
+  right: 26px;
+  max-width: 360px;
+  margin: 0;
+  color: #eeeeee;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.bid-button {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  min-width: 132px;
+  height: 38px;
+  border: 0;
+  border-radius: 3px;
+  background: #1d63e9;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.spec-grid dl {
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.spec-grid div {
+  display: grid;
+  grid-template-columns: 38% 62%;
+  min-height: 27px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.spec-grid div:last-child {
+  border-bottom: 0;
+}
+
+.spec-grid dt,
+.spec-grid dd {
+  margin: 0;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.spec-grid dt {
+  color: #ffffff;
+  background: #202020;
+}
+
+.spec-grid dd {
+  color: #d6d6d6;
+  background: #181818;
+}
+
+.detail-copy {
+  padding-top: 18px;
+}
+
+.detail-copy h2,
+.comments-panel h2,
+.other-auctions h2 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.detail-copy p {
+  margin: 0 0 18px;
+  color: #c8c8c8;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.comments-panel {
+  padding: 8px 0 32px;
+}
+
+.comments-panel > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.comments-panel span {
+  color: #969696;
+  font-size: 10px;
+}
+
+.comments-panel input {
+  width: 100%;
+  height: 31px;
+  margin-bottom: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 0 10px;
+  background: #1c1c1c;
+  color: #ffffff;
+  font: inherit;
+  font-size: 11px;
+}
+
+.comments-panel p {
+  margin: 0 0 12px;
+  color: #bfbfbf;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.comments-panel strong {
+  color: #ffffff;
+  margin-right: 6px;
+}
+
+.other-auctions {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.compact-card {
+  grid-template-columns: 42% 58%;
+  min-height: 112px;
+}
+
+.compact-card .car-media {
+  min-height: 112px;
+}
+
+.compact-card .car-body {
+  padding: 8px;
+}
+
+.compact-card .car-title-button {
+  min-height: auto;
+  font-size: 11px;
+}
+
+.compact-card .car-body p {
+  max-height: 30px;
+  overflow: hidden;
+}
+
+.compact-card .tag-row span {
+  min-height: 18px;
+  font-size: 9px;
 }
 
 .site-footer h4 {
