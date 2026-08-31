@@ -79,6 +79,19 @@ class CarFilterTests(APITestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['model'], 'X3')
 
+    def test_search_by_brand_model_or_description(self):
+        response = self.client.get('/api/cars/?search=A6')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['brand'], 'Audi')
+
+    def test_ordering_by_price_desc(self):
+        response = self.client.get('/api/cars/?ordering=-price')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['results'][0]['model'], 'X3')
+
 
 class CarPaginationTests(APITestCase):
     def setUp(self):
