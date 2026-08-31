@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -25,6 +26,8 @@ class CarViewSet(viewsets.ModelViewSet):
         price_max = params.get('price_max')
         year_min = params.get('year_min')
         year_max = params.get('year_max')
+        search = params.get('search')
+        ordering = params.get('ordering')
 
         if brand:
             queryset = queryset.filter(brand__iexact=brand)
@@ -43,6 +46,25 @@ class CarViewSet(viewsets.ModelViewSet):
 
         if year_max:
             queryset = queryset.filter(year__lte=year_max)
+
+        if search:
+            queryset = queryset.filter(
+                Q(brand__icontains=search)
+                | Q(model__icontains=search)
+                | Q(description__icontains=search)
+            )
+
+        allowed_ordering = {
+            'price',
+            '-price',
+            'year',
+            '-year',
+            'created_at',
+            '-created_at',
+        }
+
+        if ordering in allowed_ordering:
+            queryset = queryset.order_by(ordering)
 
         return queryset
 
