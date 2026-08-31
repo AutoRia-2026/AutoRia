@@ -730,6 +730,117 @@
   gap: 7px;
 }
 
+.auth-page-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.8)),
+    url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80') center / cover;
+  color: #f4f4f4;
+}
+
+.profile-page {
+  max-width: 920px;
+  min-height: 620px;
+  margin: 0 auto;
+  padding: 42px 18px 10px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.profile-header span {
+  color: #8eb3ff;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.profile-header h1 {
+  margin: 6px 0 0;
+  color: #ffffff;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.profile-header button {
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 4px;
+  padding: 0 16px;
+  background: #252525;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.profile-panel {
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  background: #1c1c1c;
+}
+
+.profile-section-title {
+  margin-bottom: 20px;
+}
+
+.profile-section-title h2 {
+  margin: 0 0 6px;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.profile-section-title p {
+  margin: 0;
+  color: #a8adb4;
+  font-size: 12px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.profile-grid label {
+  display: grid;
+  gap: 7px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-grid input {
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  padding: 0 12px;
+  outline: 0;
+  background: #151515;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+}
+
+.profile-grid input:focus {
+  box-shadow: 0 0 0 1px rgba(28, 100, 242, 0.95);
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
 .auth-overlay {
   position: fixed;
   z-index: 50;
@@ -1026,5 +1137,14 @@
   .auth-card {
     width: calc(100vw - 32px);
     padding: 42px 28px 34px;
+  }
+
+  .profile-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
   }
 }
