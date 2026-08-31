@@ -5,7 +5,15 @@ import './App.css'
 const API_URL = 'http://127.0.0.1:8000/api'
 const TOKEN_KEY = 'autoria_token'
 
-type AuthMode = 'login' | 'register'
+type Screen =
+  | 'login'
+  | 'signup-info'
+  | 'signup-password'
+  | 'signup-code'
+  | 'forgot'
+  | 'reset-code'
+  | 'reset-password'
+  | 'check-email'
 
 type User = {
   id: number
@@ -20,38 +28,59 @@ type AuthResponse = {
   user: User
 }
 
-type AuthErrors = Record<string, string[] | string>
+type ApiError = Record<string, string[] | string>
 
-function getErrorMessage(error: unknown) {
+function parseApiError(error: unknown) {
   if (!error || typeof error !== 'object') {
-    return 'Не вдалося виконати запит.'
+    return 'Request failed'
   }
 
-  const errors = error as AuthErrors
+  const data = error as ApiError
 
-  if (errors.non_field_errors) {
-    return Array.isArray(errors.non_field_errors)
-      ? errors.non_field_errors.join(' ')
-      : errors.non_field_errors
+  if (data.non_field_errors) {
+    return Array.isArray(data.non_field_errors)
+      ? data.non_field_errors.join(' ')
+      : data.non_field_errors
   }
 
-  const firstKey = Object.keys(errors)[0]
-  const firstValue = errors[firstKey]
+  const key = Object.keys(data)[0]
+  const value = data[key]
 
-  if (Array.isArray(firstValue)) {
-    return `${firstKey}: ${firstValue.join(' ')}`
+  if (Array.isArray(value)) {
+    return value.join(' ')
   }
 
-  return firstValue || 'Перевірте введені дані.'
+  return value || 'Check entered data'
+}
+
+async function apiRequest(path: string, options: RequestInit = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  })
+
+  const data = response.status === 204 ? null : await response.json()
+
+  if (!response.ok) {
+    throw data
+  }
+
+  return data
 }
 
 function App() {
-  const [mode, setMode] = useState<AuthMode>('login')
+  const [screen, setScreen] = useState<Screen>('login')
   const [email, setEmail] = useState('')
-  const [username, setUsername] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [code, setCode] = useState('')
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '')
   const [user, setUser] = useState<User | null>(null)
+  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -61,19 +90,12 @@ function App() {
       return
     }
 
-    fetch(`${API_URL}/auth/me/`, {
+    apiRequest('/auth/me/', {
       headers: {
         Authorization: `Token ${token}`,
       },
     })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw await response.json()
-        }
-
-        return response.json()
-      })
-      .then((data: User) => setUser(data))
+      .then((data) => setUser(data as User))
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY)
         setToken('')
@@ -81,48 +103,155 @@ function App() {
       })
   }, [token])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function changeScreen(nextScreen: Screen) {
+    setScreen(nextScreen)
+    setError('')
+    setMessage('')
+  }
+
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setIsLoading(true)
 
-    const payload =
-      mode === 'register'
-        ? { email, username, password }
-        : { email, password }
-
     try {
-      const response = await fetch(`${API_URL}/auth/${mode}/`, {
+      const data = (await apiRequest('/auth/login/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
+        body: JSON.stringify({ email, password }),
+      })) as AuthResponse
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw data
-      }
-
-      const authData = data as AuthResponse
-      localStorage.setItem(TOKEN_KEY, authData.token)
-      setToken(authData.token)
-      setUser(authData.user)
+      localStorage.setItem(TOKEN_KEY, data.token)
+      setToken(data.token)
+      setUser(data.user)
       setPassword('')
+      setMessage('Signed in successfully')
     } catch (requestError) {
-      setError(getErrorMessage(requestError))
+      setError(parseApiError(requestError))
     } finally {
       setIsLoading(false)
     }
   }
 
-  async function handleLogout() {
+  function submitSignupInfo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    changeScreen('signup-password')
+  }
+
+  async function submitSignupPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     setError('')
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      await apiRequest('/auth/register/', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          username: email.split('@')[0],
+          first_name: name,
+          password,
+        }),
+      })
+
+      setPassword('')
+      setConfirmPassword('')
+      changeScreen('signup-code')
+    } catch (requestError) {
+      setError(parseApiError(requestError))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function submitSignupCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      await apiRequest('/auth/verify-email/', {
+        method: 'POST',
+        body: JSON.stringify({ email, code }),
+      })
+
+      setCode('')
+      setPassword('')
+      setConfirmPassword('')
+      setScreen('login')
+      setMessage('Account created. Please sign in.')
+    } catch (requestError) {
+      setError(parseApiError(requestError))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function submitForgot(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      await apiRequest('/auth/forgot-password/', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      })
+
+      changeScreen('check-email')
+    } catch (requestError) {
+      setError(parseApiError(requestError))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function openResetCode() {
+    changeScreen('reset-code')
+  }
+
+  function submitResetCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    changeScreen('reset-password')
+  }
+
+  async function submitResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      await apiRequest('/auth/reset-password/', {
+        method: 'POST',
+        body: JSON.stringify({ email, code, password }),
+      })
+
+      setPassword('')
+      setConfirmPassword('')
+      setCode('')
+      setScreen('login')
+      setMessage('Password changed. Please sign in.')
+    } catch (requestError) {
+      setError(parseApiError(requestError))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function logout() {
     if (token) {
-      await fetch(`${API_URL}/auth/logout/`, {
+      await apiRequest('/auth/logout/', {
         method: 'POST',
         headers: {
           Authorization: `Token ${token}`,
@@ -133,105 +262,306 @@ function App() {
     localStorage.removeItem(TOKEN_KEY)
     setToken('')
     setUser(null)
+    setScreen('login')
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-hero">
-        <p className="eyebrow">AutoRia DriveHub</p>
-        <h1>Кабінет для роботи з оголошеннями авто</h1>
-        <p className="hero-copy">
-          Вхід потрібен, щоб додавати автомобілі, редагувати власні оголошення
-          та працювати з лайками.
-        </p>
-      </section>
+    <main className="auth-shell">
+      <div className="car-light" aria-hidden="true"></div>
 
-      <section className="auth-panel" aria-label="Авторизація">
-        <div className="mode-tabs" aria-label="Перемикання форми">
+      <section className="auth-card">
+        {screen !== 'login' && (
           <button
+            className="icon-button back-button"
             type="button"
-            className={mode === 'login' ? 'active' : ''}
-            onClick={() => {
-              setMode('login')
-              setError('')
-            }}
+            aria-label="Back"
+            onClick={() => changeScreen(screen.startsWith('signup') ? 'signup-info' : 'login')}
           >
-            Вхід
+            ‹
           </button>
-          <button
-            type="button"
-            className={mode === 'register' ? 'active' : ''}
-            onClick={() => {
-              setMode('register')
-              setError('')
-            }}
-          >
-            Реєстрація
-          </button>
-        </div>
+        )}
+
+        <button className="icon-button close-button" type="button" aria-label="Close">
+          ×
+        </button>
 
         {user ? (
-          <div className="user-state">
-            <span className="status-dot" aria-hidden="true"></span>
-            <div>
-              <h2>Ви увійшли</h2>
-              <p>
-                {user.email} · токен збережено в браузері
-              </p>
-            </div>
-            <button type="button" className="secondary-button" onClick={handleLogout}>
-              Вийти
+          <div className="auth-content signed-panel">
+            <h1>Welcome</h1>
+            <p>{user.email}</p>
+            <button className="primary-button" type="button" onClick={logout}>
+              Sign out
             </button>
           </div>
         ) : (
-          <form className="auth-form" onSubmit={handleSubmit}>
-            <h2>{mode === 'login' ? 'Увійти в акаунт' : 'Створити акаунт'}</h2>
+          <>
+            {screen === 'login' && (
+              <form className="auth-content" onSubmit={submitLogin}>
+                <h1>Welcome back</h1>
 
-            <label>
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="ivan@example.com"
-                required
-              />
-            </label>
+                <label>
+                  Enter your email
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="example@yourmail.com"
+                    required
+                  />
+                </label>
 
-            {mode === 'register' && (
-              <label>
-                Логін
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  placeholder="ivan"
-                  required
-                />
-              </label>
+                <label>
+                  Enter your password
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="example_password"
+                    required
+                  />
+                </label>
+
+                <div className="form-row">
+                  <label className="checkbox-label">
+                    <input type="checkbox" />
+                    Remember me
+                  </label>
+                  <button className="link-button" type="button" onClick={() => changeScreen('forgot')}>
+                    Forgot password?
+                  </button>
+                </div>
+
+                {message && <p className="form-success">{message}</p>}
+                {error && <p className="form-error">{error}</p>}
+
+                <button className="primary-button" type="submit" disabled={isLoading}>
+                  {isLoading ? 'Loading...' : 'Continue'}
+                </button>
+
+                <div className="divider">
+                  <span>or</span>
+                </div>
+
+                <div className="social-row">
+                  <button type="button">G</button>
+                  <button type="button">●</button>
+                  <button type="button">f</button>
+                </div>
+
+                <p className="switch-copy">
+                  Don't have an account?
+                  <button type="button" onClick={() => changeScreen('signup-info')}>
+                    Sign Up
+                  </button>
+                </p>
+              </form>
             )}
 
-            <label>
-              Пароль
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="мінімум 8 символів"
-                required
-              />
-            </label>
+            {screen === 'signup-info' && (
+              <form className="auth-content" onSubmit={submitSignupInfo}>
+                <h1>Sign Up</h1>
 
-            {error && <p className="form-error">{error}</p>}
+                <label>
+                  Enter your email
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="example@yourmail.com"
+                    required
+                  />
+                </label>
 
-            <button type="submit" className="primary-button" disabled={isLoading}>
-              {isLoading
-                ? 'Зачекайте...'
-                : mode === 'login'
-                  ? 'Увійти'
-                  : 'Зареєструватися'}
-            </button>
-          </form>
+                <label>
+                  Enter your name
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="example Name"
+                    required
+                  />
+                </label>
+
+                <button className="primary-button" type="submit">
+                  Continue
+                </button>
+
+                <div className="divider">
+                  <span>or</span>
+                </div>
+
+                <div className="social-row">
+                  <button type="button">G</button>
+                  <button type="button">●</button>
+                  <button type="button">f</button>
+                </div>
+
+                <p className="switch-copy">
+                  Already have an account?
+                  <button type="button" onClick={() => changeScreen('login')}>
+                    Sign in here
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {screen === 'signup-password' && (
+              <form className="auth-content" onSubmit={submitSignupPassword}>
+                <h1>Sign Up</h1>
+
+                <label>
+                  Create your password
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="example_password"
+                    required
+                  />
+                </label>
+
+                <label>
+                  Confirm password
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="example_password"
+                    required
+                  />
+                </label>
+
+                {error && <p className="form-error">{error}</p>}
+
+                <button className="primary-button" type="submit" disabled={isLoading}>
+                  {isLoading ? 'Loading...' : 'Create account'}
+                </button>
+
+                <p className="switch-copy">
+                  Already have an account?
+                  <button type="button" onClick={() => changeScreen('login')}>
+                    Sign in here
+                  </button>
+                </p>
+              </form>
+            )}
+
+            {screen === 'signup-code' && (
+              <form className="auth-content compact-content" onSubmit={submitSignupCode}>
+                <h1>Check your email</h1>
+                <p className="modal-copy">We sent a verification code to your email.</p>
+
+                <label>
+                  Enter code
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    placeholder="123456"
+                    required
+                  />
+                </label>
+
+                {error && <p className="form-error">{error}</p>}
+
+                <button className="primary-button" type="submit" disabled={isLoading}>
+                  {isLoading ? 'Loading...' : 'Verify account'}
+                </button>
+              </form>
+            )}
+
+            {screen === 'forgot' && (
+              <form className="auth-content compact-content" onSubmit={submitForgot}>
+                <h1>Forgot Password?</h1>
+                <p className="modal-copy">Enter your email and we will send you a verification code.</p>
+
+                <label>
+                  Enter your email
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="example@yourmail.com"
+                    required
+                  />
+                </label>
+
+                {error && <p className="form-error">{error}</p>}
+
+                <button className="primary-button" type="submit" disabled={isLoading}>
+                  {isLoading ? 'Loading...' : 'Send email'}
+                </button>
+              </form>
+            )}
+
+            {screen === 'check-email' && (
+              <div className="auth-content compact-content">
+                <h1>Check your email</h1>
+                <p className="modal-copy">We have sent the password reset code to your email.</p>
+                <button className="primary-button" type="button" onClick={openResetCode}>
+                  Continue
+                </button>
+              </div>
+            )}
+
+            {screen === 'reset-code' && (
+              <form className="auth-content compact-content" onSubmit={submitResetCode}>
+                <h1>Enter code</h1>
+
+                <label>
+                  Verification code
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value)}
+                    placeholder="123456"
+                    required
+                  />
+                </label>
+
+                <button className="primary-button" type="submit">
+                  Continue
+                </button>
+              </form>
+            )}
+
+            {screen === 'reset-password' && (
+              <form className="auth-content" onSubmit={submitResetPassword}>
+                <h1>Create new password</h1>
+
+                <label>
+                  Create new password
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="example_password"
+                    required
+                  />
+                </label>
+
+                <label>
+                  Confirm password
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    placeholder="example_password"
+                    required
+                  />
+                </label>
+
+                {error && <p className="form-error">{error}</p>}
+
+                <button className="primary-button" type="submit" disabled={isLoading}>
+                  {isLoading ? 'Loading...' : 'Reset password'}
+                </button>
+              </form>
+            )}
+          </>
         )}
       </section>
     </main>
