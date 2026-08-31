@@ -3,7 +3,7 @@ from django.utils import timezone
 from datetime import timedelta
 from rest_framework.test import APITestCase
 
-from .models import EmailVerificationCode
+from .models import EmailVerificationCode, SellerProfile
 
 
 class AccountVerificationTests(APITestCase):
@@ -15,6 +15,8 @@ class AccountVerificationTests(APITestCase):
                 'username': 'newuser',
                 'first_name': 'New User',
                 'password': 'StrongPass123',
+                'phone': '+380501112233',
+                'city': 'Kyiv',
             },
             format='json',
         )
@@ -23,6 +25,13 @@ class AccountVerificationTests(APITestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertFalse(user.is_active)
+        self.assertTrue(
+            SellerProfile.objects.filter(
+                user=user,
+                phone='+380501112233',
+                city='Kyiv',
+            ).exists()
+        )
         self.assertTrue(
             EmailVerificationCode.objects.filter(
                 user=user,

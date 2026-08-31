@@ -4,10 +4,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Car, CarLike
+from .models import Car, CarComment, CarLike
 from .pagination import CarPagination
 from .permissions import IsOwnerOrReadOnly
-from .serializers import CarSerializer
+from .serializers import CarCommentSerializer, CarSerializer
 
 
 class CarViewSet(viewsets.ModelViewSet):
@@ -17,7 +17,12 @@ class CarViewSet(viewsets.ModelViewSet):
     pagination_class = CarPagination
 
     def get_queryset(self):
-        return self.apply_query_params(Car.objects.all())
+        if self.action == 'my':
+            queryset = Car.objects.filter(owner=self.request.user)
+        else:
+            queryset = Car.objects.filter(status=Car.STATUS_ACTIVE)
+
+        return self.apply_query_params(queryset)
 
     def apply_query_params(self, queryset):
         params = self.request.query_params
@@ -30,6 +35,7 @@ class CarViewSet(viewsets.ModelViewSet):
         year_max = params.get('year_max')
         search = params.get('search')
         ordering = params.get('ordering')
+        car_status = params.get('status')
 
         if brand:
             queryset = queryset.filter(brand__iexact=brand)
@@ -48,6 +54,9 @@ class CarViewSet(viewsets.ModelViewSet):
 
         if year_max:
             queryset = queryset.filter(year__lte=year_max)
+
+        if car_status in {Car.STATUS_ACTIVE, Car.STATUS_SOLD, Car.STATUS_HIDDEN}:
+            queryset = queryset.filter(status=car_status)
 
         if search:
             queryset = queryset.filter(
@@ -79,7 +88,7 @@ class CarViewSet(viewsets.ModelViewSet):
         url_path='my',
     )
     def my(self, request):
-        queryset = self.apply_query_params(Car.objects.filter(owner=request.user))
+        queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
 
         if page is not None:
@@ -134,3 +143,25 @@ class CarViewSet(viewsets.ModelViewSet):
             {'liked': False, 'likes_count': car.likes.count()},
             status=status.HTTP_200_OK,
         )
+
+    @action(
+        detail=True,
+        methods=['get', 'post'],
+        permission_classes=[IsAuthenticated],
+        url_path='comments',
+    )
+    def comments(self, request, pk=None):
+        car = self.get_object()
+
+        if request.method == 'GET':
+            serializer = CarCommentSerializer(car.comments.all(), many=True)
+            return Response(serializer.data)
+
+        serializer = CarCommentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        comment = CarComment.objects.create(
+            car=car,
+            user=request.user,
+            text=serializer.validated_data['text'],
+        )
+        return Response(CarCommentSerializer(comment).data, status=status.HTTP_201_CREATED)

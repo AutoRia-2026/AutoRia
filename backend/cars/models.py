@@ -3,6 +3,10 @@ from django.conf import settings
 
 
 class Car(models.Model):
+    STATUS_ACTIVE = 'active'
+    STATUS_SOLD = 'sold'
+    STATUS_HIDDEN = 'hidden'
+
     TRANSMISSION_CHOICES = [
         ('manual', 'Manual'),
         ('automatic', 'Automatic'),
@@ -16,6 +20,12 @@ class Car(models.Model):
         ('gas', 'Gas'),
         ('hybrid', 'Hybrid'),
         ('electric', 'Electric'),
+    ]
+
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, 'Active'),
+        (STATUS_SOLD, 'Sold'),
+        (STATUS_HIDDEN, 'Hidden'),
     ]
 
     owner = models.ForeignKey(
@@ -34,6 +44,7 @@ class Car(models.Model):
     fuel_type = models.CharField(max_length=20, choices=FUEL_CHOICES)
     image_url = models.URLField(blank=True)
     description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     views_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -85,3 +96,24 @@ class CarImage(models.Model):
 
     def __str__(self):
         return f'{self.car_id} image {self.position}'
+
+
+class CarComment(models.Model):
+    car = models.ForeignKey(
+        Car,
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='car_comments',
+    )
+    text = models.TextField(max_length=1000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user_id} comment on {self.car_id}'

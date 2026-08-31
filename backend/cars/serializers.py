@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Car, CarImage
+from .models import Car, CarComment, CarImage
 
 
 class CarImageSerializer(serializers.ModelSerializer):
@@ -10,16 +10,29 @@ class CarImageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class CarCommentSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source='user.id')
+    username = serializers.ReadOnlyField(source='user.username')
+
+    class Meta:
+        model = CarComment
+        fields = ['id', 'user', 'username', 'text', 'created_at']
+        read_only_fields = ['id', 'user', 'username', 'created_at']
+
+
 class CarSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.id')
+    seller = serializers.SerializerMethodField()
     likes_count = serializers.IntegerField(source='likes.count', read_only=True)
     images = CarImageSerializer(many=True, required=False)
+    comments = CarCommentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Car
         fields = [
             'id',
             'owner',
+            'seller',
             'brand',
             'model',
             'year',
@@ -29,17 +42,21 @@ class CarSerializer(serializers.ModelSerializer):
             'fuel_type',
             'image_url',
             'description',
+            'status',
             'views_count',
             'likes_count',
             'images',
+            'comments',
             'created_at',
             'updated_at',
         ]
         read_only_fields = [
             'id',
             'owner',
+            'seller',
             'views_count',
             'likes_count',
+            'comments',
             'created_at',
             'updated_at',
         ]
@@ -68,3 +85,19 @@ class CarSerializer(serializers.ModelSerializer):
                 image_url=image_data['image_url'],
                 position=position,
             )
+
+    def get_seller(self, car):
+        if car.owner is None:
+            return None
+
+        profile = getattr(car.owner, 'seller_profile', None)
+
+        return {
+            'id': car.owner.id,
+            'username': car.owner.username,
+            'email': car.owner.email,
+            'first_name': car.owner.first_name,
+            'last_name': car.owner.last_name,
+            'phone': profile.phone if profile else '',
+            'city': profile.city if profile else '',
+        }
