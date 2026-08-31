@@ -28,3 +28,18 @@ class EmailVerificationCode(models.Model):
 
     def is_expired(self):
         return timezone.now() > self.expires_at
+
+
+class SellerProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='seller_profile',
+    )
+    phone = models.CharField(max_length=30, blank=True)
+    city = models.CharField(max_length=80, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.get_full_name() or self.user.username

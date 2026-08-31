@@ -1,24 +1,34 @@
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
-from .models import EmailVerificationCode
+from .models import EmailVerificationCode, SellerProfile
 
 
 User = get_user_model()
 
 
+class SellerProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SellerProfile
+        fields = ['phone', 'city']
+
+
 class UserSerializer(serializers.ModelSerializer):
+    seller_profile = SellerProfileSerializer(read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'seller_profile']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    city = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'password']
+        fields = ['id', 'email', 'username', 'first_name', 'password', 'phone', 'city']
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -26,6 +36,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        phone = validated_data.pop('phone', '')
+        city = validated_data.pop('city', '')
         email = validated_data['email'].lower()
         username = validated_data.get('username') or email
         user = User(
@@ -36,6 +48,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
+        SellerProfile.objects.create(user=user, phone=phone, city=city)
         return user
 
 

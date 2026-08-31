@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Car, CarImage, CarLike
+from .models import Car, CarComment, CarImage, CarLike
 
 
 class CarImageInline(admin.TabularInline):
@@ -17,11 +17,12 @@ class CarAdmin(admin.ModelAdmin):
         'year',
         'price',
         'fuel_type',
+        'status',
         'owner',
         'views_count',
         'created_at',
     ]
-    list_filter = ['brand', 'fuel_type', 'transmission', 'year']
+    list_filter = ['status', 'brand', 'fuel_type', 'transmission', 'year']
     search_fields = ['brand', 'model', 'description', 'owner__username', 'owner__email']
     inlines = [CarImageInline]
 
@@ -38,3 +39,10 @@ class CarLikeAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'car', 'created_at']
     list_filter = ['created_at']
     search_fields = ['user__username', 'user__email', 'car__brand', 'car__model']
+
+
+@admin.register(CarComment)
+class CarCommentAdmin(admin.ModelAdmin):
+    list_display = ['id', 'car', 'user', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['text', 'user__username', 'user__email', 'car__brand', 'car__model']

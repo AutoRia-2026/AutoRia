@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from .models import Car, CarImage, CarLike
+from accounts.models import SellerProfile
+
+from .models import Car, CarComment, CarImage, CarLike
 
 
 class CarFilterTests(APITestCase):
@@ -257,6 +259,31 @@ class MyCarsTests(APITestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_my_endpoint_includes_hidden_owner_cars(self):
+        user = get_user_model().objects.create_user(
+            username='hiddenowner',
+            email='hiddenowner@example.com',
+            password='StrongPass123',
+        )
+        Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+            status=Car.STATUS_HIDDEN,
+        )
+
+        self.client.force_authenticate(user=user)
+        response = self.client.get('/api/cars/my/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['status'], Car.STATUS_HIDDEN)
+
 
 class CarImageTests(APITestCase):
     def test_create_car_with_multiple_images(self):
@@ -322,3 +349,121 @@ class CarImageTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(car.images.count(), 1)
         self.assertEqual(car.images.first().image_url, 'https://example.com/new.jpg')
+
+
+class CarStatusTests(APITestCase):
+    def test_public_list_shows_only_active_cars_by_default(self):
+        user = get_user_model().objects.create_user(
+            username='statususer',
+            email='status@example.com',
+            password='StrongPass123',
+        )
+        Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+            status=Car.STATUS_ACTIVE,
+        )
+        Car.objects.create(
+            owner=user,
+            brand='Audi',
+            model='RS6',
+            year=2022,
+            mileage=12000,
+            price='120000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+            status=Car.STATUS_HIDDEN,
+        )
+
+        response = self.client.get('/api/cars/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['brand'], 'BMW')
+
+
+class SellerProfileTests(APITestCase):
+    def test_car_response_includes_seller_contacts(self):
+        user = get_user_model().objects.create_user(
+            username='selleruser',
+            email='seller@example.com',
+            first_name='Seller',
+            password='StrongPass123',
+        )
+        SellerProfile.objects.create(user=user, phone='+380501112233', city='Lviv')
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+
+        response = self.client.get(f'/api/cars/{car.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['seller']['phone'], '+380501112233')
+        self.assertEqual(response.data['seller']['city'], 'Lviv')
+
+
+class CarCommentTests(APITestCase):
+    def test_authenticated_user_can_create_comment(self):
+        user = get_user_model().objects.create_user(
+            username='commentuser',
+            email='comment@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            f'/api/cars/{car.id}/comments/',
+            {'text': 'Is this car still available?'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CarComment.objects.count(), 1)
+        self.assertEqual(response.data['text'], 'Is this car still available?')
+
+    def test_car_detail_includes_comments(self):
+        user = get_user_model().objects.create_user(
+            username='commentowner',
+            email='commentowner@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+        CarComment.objects.create(car=car, user=user, text='Clean title?')
+
+        response = self.client.get(f'/api/cars/{car.id}/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['comments']), 1)
+        self.assertEqual(response.data['comments'][0]['text'], 'Clean title?')
