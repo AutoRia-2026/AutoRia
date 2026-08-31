@@ -21,8 +21,16 @@ class CarSerializer(serializers.ModelSerializer):
             'fuel_type',
             'image_url',
             'description',
+            'views_count',
             'likes_count',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'owner', 'likes_count', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id',
+            'owner',
+            'views_count',
+            'likes_count',
+            'created_at',
+            'updated_at',
+        ]

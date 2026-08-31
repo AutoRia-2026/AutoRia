@@ -92,6 +92,12 @@ class CarFilterTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['model'], 'X3')
 
+    def test_ordering_by_mileage_asc(self):
+        response = self.client.get('/api/cars/?ordering=mileage')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['results'][0]['model'], 'X3')
+
 
 class CarPaginationTests(APITestCase):
     def setUp(self):
@@ -177,3 +183,30 @@ class CarLikeTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['liked'])
         self.assertEqual(CarLike.objects.count(), 0)
+
+
+class CarDetailTests(APITestCase):
+    def test_detail_page_increments_views_count(self):
+        user = get_user_model().objects.create_user(
+            username='detailuser',
+            email='detail@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4 CSL',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+
+        response = self.client.get(f'/api/cars/{car.id}/')
+
+        car.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['views_count'], 1)
+        self.assertEqual(car.views_count, 1)
