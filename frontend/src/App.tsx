@@ -37,6 +37,15 @@ type AuthResponse = {
 type Car = {
   id: number
   owner: number | null
+  seller?: {
+    id: number
+    username: string
+    email: string
+    first_name: string
+    last_name: string
+    phone: string
+    city: string
+  } | null
   brand: string
   model: string
   year: number
@@ -46,8 +55,26 @@ type Car = {
   fuel_type: string
   image_url: string
   description: string
+  status: string
   views_count: number
   likes_count: number
+  images?: CarImage[]
+  comments?: CarComment[]
+  created_at: string
+}
+
+type CarImage = {
+  id: number
+  image_url: string
+  position: number
+  created_at: string
+}
+
+type CarComment = {
+  id: number
+  user: number
+  username: string
+  text: string
   created_at: string
 }
 
@@ -151,8 +178,15 @@ function App() {
   const [brand, setBrand] = useState('')
   const [fuelType, setFuelType] = useState('')
   const [ordering, setOrdering] = useState('-created_at')
+  const [activeFilter, setActiveFilter] = useState('ending')
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [refreshIndex, setRefreshIndex] = useState(0)
+  const [notice, setNotice] = useState('')
+  const [bidOpen, setBidOpen] = useState(false)
+  const [bidAmount, setBidAmount] = useState('')
+  const [bidMessage, setBidMessage] = useState('')
+  const [commentText, setCommentText] = useState('')
+  const [isCommentSending, setIsCommentSending] = useState(false)
   const [profileForm, setProfileForm] = useState({
     username: '',
     email: '',
@@ -174,6 +208,13 @@ function App() {
     [cars, selectedCar],
   )
   const searchHeading = search.trim() || brand || 'Cars'
+  const visibleCars = useMemo(() => {
+    if (activeFilter === 'watched') {
+      return [...cars].sort((firstCar, secondCar) => secondCar.likes_count - firstCar.likes_count)
+    }
+
+    return cars
+  }, [activeFilter, cars])
 
   useEffect(() => {
     if (localStorage.getItem(REMEMBER_KEY) !== 'true') {
@@ -269,26 +310,90 @@ function App() {
     setSearch(value)
     setPageUrl(null)
     setPage(value.trim() ? 'search' : 'home')
+    setNotice('')
   }
 
   function updateBrand(value: string) {
     setBrand(value)
     setPageUrl(null)
     setPage(value ? 'search' : page)
+    setNotice('')
   }
 
   function updateFuel(value: string) {
     setFuelType(value)
     setPageUrl(null)
+    setPage('search')
+    setNotice('')
   }
 
   function updateOrdering(value: string) {
     setOrdering(value)
     setPageUrl(null)
+    setPage('search')
+    setNotice('')
+  }
+
+  function goHome() {
+    setPage('home')
+    setSearch('')
+    setBrand('')
+    setFuelType('')
+    setOrdering('-created_at')
+    setActiveFilter('ending')
+    setPageUrl(null)
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function showNotice(text: string) {
+    setNotice(text)
+    window.setTimeout(() => setNotice(''), 2800)
+  }
+
+  function applyQuickFilter(filter: string) {
+    setActiveFilter(filter)
+    setPageUrl(null)
+    setPage('search')
+
+    if (filter === 'ending') {
+      setOrdering('-created_at')
+    }
+
+    if (filter === 'new') {
+      setOrdering('-year')
+    }
+
+    if (filter === 'watched') {
+      showNotice('Showing cars with the most watchers first')
+    }
+  }
+
+  function saveSearch() {
+    localStorage.setItem(
+      'autoria_saved_search',
+      JSON.stringify({ search, brand, fuelType, ordering, activeFilter }),
+    )
+    showNotice('Search saved')
+  }
+
+  function openProtectedPage(nextPage: Page, fallbackMessage = 'Please sign in first') {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    setPage(nextPage)
+    if (fallbackMessage) {
+      showNotice(fallbackMessage)
+    }
   }
 
   async function openCar(car: Car) {
     setPage('detail')
+    setBidMessage('')
+    setBidAmount('')
+    setCommentText('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
     try {
@@ -527,6 +632,67 @@ function App() {
     }
   }
 
+  async function submitComment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    if (!selectedCar || !commentText.trim()) {
+      return
+    }
+
+    setIsCommentSending(true)
+
+    try {
+      const comment = (await apiRequest(`/cars/${selectedCar.id}/comments/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({ text: commentText.trim() }),
+      })) as CarComment
+
+      setSelectedCar({
+        ...selectedCar,
+        comments: [comment, ...(selectedCar.comments || [])],
+      })
+      setCommentText('')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    } finally {
+      setIsCommentSending(false)
+    }
+  }
+
+  function submitBid(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!token) {
+      setBidOpen(false)
+      openAuth('login')
+      return
+    }
+
+    if (!selectedCar) {
+      return
+    }
+
+    const numericBid = Number(bidAmount)
+
+    if (!Number.isFinite(numericBid) || numericBid <= Number(selectedCar.price)) {
+      setBidMessage(`Bid must be higher than ${formatPrice(selectedCar.price)}`)
+      setBidOpen(false)
+      return
+    }
+
+    setBidOpen(false)
+    setBidMessage(`Bid ${formatPrice(bidAmount)} submitted`)
+    setBidAmount('')
+  }
+
   function renderCarCard(car: Car, compact = false) {
     return (
       <article className={compact ? 'car-card compact-card' : 'car-card'} key={car.id}>
@@ -564,26 +730,26 @@ function App() {
   function renderFooter() {
     return (
       <footer className="site-footer">
-        <button className="logo footer-logo" type="button" onClick={() => setPage('home')}>
+        <button className="logo footer-logo" type="button" onClick={goHome}>
           veyo
         </button>
         <div>
           <h4>How it works</h4>
-          <a href="#sell">SafePay</a>
-          <a href="#buy">Buying a Car</a>
-          <a href="#finish">Finalizing the Sale</a>
+          <button type="button" onClick={() => showNotice('SafePay page will be added later')}>SafePay</button>
+          <button type="button" onClick={() => showNotice('Buying guide will be added later')}>Buying a Car</button>
+          <button type="button" onClick={() => showNotice('Sale guide will be added later')}>Finalizing the Sale</button>
         </div>
         <div>
           <h4>Sellers</h4>
-          <a href="#submit">Submit Your Car</a>
-          <a href="#dashboard">Dashboard</a>
-          <a href="#photo">Photo Guide</a>
+          <button type="button" onClick={() => openProtectedPage('profile', 'Car submission page will be added later')}>Submit Your Car</button>
+          <button type="button" onClick={() => openProtectedPage('profile', 'Seller dashboard will be added later')}>Dashboard</button>
+          <button type="button" onClick={() => showNotice('Photo guide will be added later')}>Photo Guide</button>
         </div>
         <div>
           <h4>Helpful links</h4>
-          <a href="#about">What's VEYO?</a>
-          <a href="#terms">Terms</a>
-          <a href="#privacy">Privacy</a>
+          <button type="button" onClick={() => showNotice('VEYO information page will be added later')}>What's VEYO?</button>
+          <button type="button" onClick={() => showNotice('Terms page will be added later')}>Terms</button>
+          <button type="button" onClick={() => showNotice('Privacy page will be added later')}>Privacy</button>
         </div>
       </footer>
     )
@@ -658,9 +824,9 @@ function App() {
                 <span>or</span>
               </div>
               <div className="social-row">
-                <button type="button">G</button>
-                <button type="button">A</button>
-                <button type="button">f</button>
+                <button type="button" onClick={() => setError('Google login will be added later')}>G</button>
+                <button type="button" onClick={() => setError('Apple login will be added later')}>A</button>
+                <button type="button" onClick={() => setError('Facebook login will be added later')}>f</button>
               </div>
               <p className="switch-copy">
                 Don't have an account?
@@ -701,9 +867,9 @@ function App() {
                 <span>or</span>
               </div>
               <div className="social-row">
-                <button type="button">G</button>
-                <button type="button">A</button>
-                <button type="button">f</button>
+                <button type="button" onClick={() => setError('Google registration will be added later')}>G</button>
+                <button type="button" onClick={() => setError('Apple registration will be added later')}>A</button>
+                <button type="button" onClick={() => setError('Facebook registration will be added later')}>f</button>
               </div>
               <p className="switch-copy">
                 Already have an account?
@@ -868,6 +1034,43 @@ function App() {
     )
   }
 
+  function renderBidModal() {
+    if (!bidOpen || !selectedCar) {
+      return null
+    }
+
+    return (
+      <div className="auth-overlay">
+        <section className="auth-card bid-card">
+          <button
+            className="icon-button close-button"
+            type="button"
+            aria-label="Close"
+            onClick={() => setBidOpen(false)}
+          >
+            &times;
+          </button>
+          <form className="auth-content compact-content" onSubmit={submitBid}>
+            <h1>{carTitle(selectedCar)}</h1>
+            <p className="modal-copy">Current price: {formatPrice(selectedCar.price)}</p>
+            <label>
+              Your bid
+              <input
+                type="text"
+                inputMode="numeric"
+                value={bidAmount}
+                onChange={(event) => setBidAmount(event.target.value)}
+                placeholder="25000"
+                required
+              />
+            </label>
+            <button className="primary-button" type="submit">Make a bid</button>
+          </form>
+        </section>
+      </div>
+    )
+  }
+
   function renderProfilePage() {
     if (!user) {
       return null
@@ -964,14 +1167,14 @@ function App() {
   return (
     <main className="app-shell">
       <header className="site-header">
-        <button className="logo" type="button" onClick={() => setPage('home')}>
+        <button className="logo" type="button" onClick={goHome}>
           veyo
         </button>
         <nav className="top-nav" aria-label="Primary navigation">
-          <button type="button" onClick={() => setPage('home')}>Auctions</button>
-          <button type="button">Sell your car</button>
-          <button type="button">What's VEYO?</button>
-          <button type="button">Leaderboard</button>
+          <button type="button" onClick={goHome}>Auctions</button>
+          <button type="button" onClick={() => openProtectedPage('profile', 'Car submission page will be added later')}>Sell your car</button>
+          <button type="button" onClick={() => showNotice('VEYO information page will be added later')}>What's VEYO?</button>
+          <button type="button" onClick={() => applyQuickFilter('watched')}>Leaderboard</button>
         </nav>
         <label className="header-search">
           <span>Search</span>
@@ -983,15 +1186,16 @@ function App() {
           />
         </label>
         <div className="header-actions">
-          <button type="button" aria-label="Notifications">!</button>
+          <button type="button" aria-label="Notifications" onClick={() => showNotice('No new notifications')}>!</button>
           {user ? (
             <button type="button" onClick={() => setPage('profile')}>{user.first_name || user.username}</button>
           ) : (
             <button type="button" onClick={() => openAuth('login')}>Sign in</button>
           )}
-          <button type="button">EN</button>
+          <button type="button" onClick={() => showNotice('English interface is active')}>EN</button>
         </div>
       </header>
+      {notice && <div className="toast-message">{notice}</div>}
 
       {page === 'profile' && user ? (
         renderProfilePage()
@@ -1011,8 +1215,9 @@ function App() {
               <span><strong>3</strong>Bids count</span>
             </div>
             <p className="hero-note">{selectedCar.description || 'Clean title, verified history and auction-ready listing.'}</p>
-            <button className="bid-button" type="button" onClick={() => token ? undefined : openAuth('login')}>Place Bid</button>
+            <button className="bid-button" type="button" onClick={() => token ? setBidOpen(true) : openAuth('login')}>Place Bid</button>
           </section>
+          {bidMessage && <p className="inline-success">{bidMessage}</p>}
 
           <div className="detail-layout">
             <section>
@@ -1024,7 +1229,7 @@ function App() {
                   <div><dt>VIN</dt><dd>WBS43AZ0X0{selectedCar.id}975</dd></div>
                   <div><dt>Title Status</dt><dd>Clean</dd></div>
                   <div><dt>Location</dt><dd>Portland, OR 97205</dd></div>
-                  <div><dt>Seller</dt><dd>{user?.username || 'BMW_luver'}</dd></div>
+                  <div><dt>Seller</dt><dd>{selectedCar.seller?.username || 'Seller'}</dd></div>
                 </dl>
                 <dl>
                   <div><dt>Engine</dt><dd>{selectedCar.fuel_type}</dd></div>
@@ -1055,9 +1260,23 @@ function App() {
                   <h2>Comments</h2>
                   <span>Newest</span>
                 </div>
-                <input placeholder="Leave a Comment below" />
-                <p><strong>BMW_luver</strong> This car looks clean. Is there a service report?</p>
-                <p><strong>QuickSteel</strong> Can you confirm the total number of carbon fiber pieces?</p>
+                <form onSubmit={submitComment}>
+                  <input
+                    value={commentText}
+                    onChange={(event) => setCommentText(event.target.value)}
+                    placeholder="Leave a Comment below"
+                  />
+                  <button type="submit" disabled={isCommentSending || !commentText.trim()}>
+                    {isCommentSending ? 'Sending...' : 'Send'}
+                  </button>
+                </form>
+                {(selectedCar.comments || []).length > 0 ? (
+                  selectedCar.comments?.map((comment) => (
+                    <p key={comment.id}><strong>{comment.username}</strong>{comment.text}</p>
+                  ))
+                ) : (
+                  <p>No comments yet.</p>
+                )}
               </section>
             </section>
 
@@ -1094,16 +1313,37 @@ function App() {
             {page === 'search' && (
               <div className="search-heading">
                 <h1>{searchHeading}</h1>
-                <button type="button">Save Search and Notify Me Later</button>
+                <div>
+                  <button type="button" onClick={goHome}>Back to main page</button>
+                  <button type="button" onClick={saveSearch}>Save Search and Notify Me Later</button>
+                </div>
               </div>
             )}
 
             <div className="section-bar">
               <h2>{page === 'search' ? `${searchHeading} Auctions` : 'Auctions'}</h2>
               <div className="filters">
-                <button type="button" className="filter-chip active">Ending soon</button>
-                <button type="button" className="filter-chip">New cars</button>
-                <button type="button" className="filter-chip">Inspected</button>
+                <button
+                  type="button"
+                  className={activeFilter === 'ending' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => applyQuickFilter('ending')}
+                >
+                  Ending soon
+                </button>
+                <button
+                  type="button"
+                  className={activeFilter === 'new' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => applyQuickFilter('new')}
+                >
+                  New cars
+                </button>
+                <button
+                  type="button"
+                  className={activeFilter === 'watched' ? 'filter-chip active' : 'filter-chip'}
+                  onClick={() => applyQuickFilter('watched')}
+                >
+                  Most watched
+                </button>
                 <select value={brand} onChange={(event) => updateBrand(event.target.value)}>
                   <option value="">All brands</option>
                   {brands.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -1130,8 +1370,15 @@ function App() {
             {carsError && <p className="cars-error">{carsError}</p>}
 
             <div className={page === 'search' ? 'search-results cars-grid' : 'cars-grid'}>
-              {cars.map((car) => renderCarCard(car))}
+              {visibleCars.map((car) => renderCarCard(car))}
             </div>
+            {!isCarsLoading && visibleCars.length === 0 && (
+              <div className="empty-state">
+                <h3>No cars found</h3>
+                <p>Try another model, brand or fuel type.</p>
+                <button type="button" onClick={goHome}>Reset search</button>
+              </div>
+            )}
 
             <div className="pagination-bar">
               <span>{isCarsLoading ? 'Loading cars...' : `${carsCount} cars available`}</span>
@@ -1145,6 +1392,7 @@ function App() {
       )}
 
       {renderFooter()}
+      {renderBidModal()}
       {renderAuthModal()}
     </main>
   )
