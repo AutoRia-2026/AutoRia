@@ -59,11 +59,17 @@ class CarViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(status=car_status)
 
         if search:
-            queryset = queryset.filter(
-                Q(brand__icontains=search)
-                | Q(model__icontains=search)
-                | Q(description__icontains=search)
-            )
+            for term in search.split():
+                query = (
+                    Q(brand__icontains=term)
+                    | Q(model__icontains=term)
+                    | Q(description__icontains=term)
+                )
+
+                if term.isdigit():
+                    query |= Q(year=int(term))
+
+                queryset = queryset.filter(query)
 
         allowed_ordering = {
             'price',
