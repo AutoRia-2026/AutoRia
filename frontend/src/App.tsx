@@ -20,7 +20,17 @@ import ReviewsPage from './pages/ReviewsPage'
 import ReviewSubmittedPage from './pages/ReviewSubmittedPage'
 import SellPage from './pages/SellPage'
 import type { AuthResponse, AuthScreen, Page, ProfileSection, User } from './types/auth'
-import type { Car, CarComment, CarReview, CarsResponse, Conversation, Message, SellListingForm } from './types/cars'
+import type {
+  Car,
+  CarComment,
+  CarReview,
+  CarsResponse,
+  Conversation,
+  Message,
+  RentalBooking,
+  RentalBookingForm,
+  SellListingForm,
+} from './types/cars'
 import { carTitle, formatPrice } from './utils/cars'
 
 function App() {
@@ -84,6 +94,16 @@ function App() {
   const [bidOpen, setBidOpen] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
   const [bidMessage, setBidMessage] = useState('')
+  const [bookingOpen, setBookingOpen] = useState(false)
+  const [bookingForm, setBookingForm] = useState<RentalBookingForm>({
+    start_date: '',
+    end_date: '',
+    pickup_location: '',
+    dropoff_location: '',
+  })
+  const [bookingMessage, setBookingMessage] = useState('')
+  const [bookingError, setBookingError] = useState('')
+  const [isBookingSending, setIsBookingSending] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [isCommentSending, setIsCommentSending] = useState(false)
   const [profileForm, setProfileForm] = useState({
@@ -958,6 +978,23 @@ function App() {
     }
   }
 
+  function openBooking(car: Car) {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    if (!car.is_available_for_rent) {
+      showNotice('This car is not available for rent')
+      return
+    }
+
+    setSelectedCar(car)
+    setBookingMessage('')
+    setBookingError('')
+    setBookingOpen(true)
+  }
+
   function resetSellForm() {
     setSellForm({
       brand: '',
@@ -1218,6 +1255,53 @@ function App() {
     setBidAmount('')
   }
 
+  async function submitBooking(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!token) {
+      setBookingOpen(false)
+      openAuth('login')
+      return
+    }
+
+    if (!selectedCar) {
+      return
+    }
+
+    setIsBookingSending(true)
+    setBookingError('')
+    setBookingMessage('')
+
+    try {
+      const booking = (await apiRequest('/cars/bookings/', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({
+          car: selectedCar.id,
+          start_date: bookingForm.start_date,
+          end_date: bookingForm.end_date,
+          pickup_location: bookingForm.pickup_location,
+          dropoff_location: bookingForm.dropoff_location,
+        }),
+      })) as RentalBooking
+
+      setBookingMessage(`Booking request sent. Total: ${formatPrice(booking.total_price)}`)
+      showNotice('Rental booking request sent')
+      setBookingForm({
+        start_date: '',
+        end_date: '',
+        pickup_location: '',
+        dropoff_location: '',
+      })
+    } catch (requestError) {
+      setBookingError(parseApiError(requestError))
+    } finally {
+      setIsBookingSending(false)
+    }
+  }
+
   const authProps = {
     authScreen,
     email,
@@ -1291,6 +1375,68 @@ function App() {
     )
   }
 
+  function renderBookingModal() {
+    if (!bookingOpen || !selectedCar) {
+      return null
+    }
+
+    return (
+      <div className="auth-overlay">
+        <section className="auth-card bid-card rental-booking-card">
+          <button className="icon-button close-button" type="button" aria-label="Close" onClick={() => setBookingOpen(false)}>
+            x
+          </button>
+          <form className="auth-content compact-content" onSubmit={submitBooking}>
+            <h1>Book rental</h1>
+            <p className="modal-copy">{carTitle(selectedCar)} · ${selectedCar.effective_rent_price_per_day}/day</p>
+            <label>
+              Start date
+              <input
+                type="date"
+                value={bookingForm.start_date}
+                onChange={(event) => setBookingForm({ ...bookingForm, start_date: event.target.value })}
+                required
+              />
+            </label>
+            <label>
+              End date
+              <input
+                type="date"
+                value={bookingForm.end_date}
+                onChange={(event) => setBookingForm({ ...bookingForm, end_date: event.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Pickup location
+              <input
+                type="text"
+                value={bookingForm.pickup_location}
+                onChange={(event) => setBookingForm({ ...bookingForm, pickup_location: event.target.value })}
+                placeholder="Kyiv Center"
+                required
+              />
+            </label>
+            <label>
+              Dropoff location
+              <input
+                type="text"
+                value={bookingForm.dropoff_location}
+                onChange={(event) => setBookingForm({ ...bookingForm, dropoff_location: event.target.value })}
+                placeholder="Same as pickup"
+              />
+            </label>
+            {bookingMessage && <p className="form-success">{bookingMessage}</p>}
+            {bookingError && <p className="form-error">{bookingError}</p>}
+            <button className="primary-button" type="submit" disabled={isBookingSending}>
+              {isBookingSending ? 'Sending...' : 'Request booking'}
+            </button>
+          </form>
+        </section>
+      </div>
+    )
+  }
+
   if (page === 'auth' && !user) {
     return (
       <AuthPage
@@ -1357,6 +1503,7 @@ function App() {
           isCommentSending={isCommentSending}
           setCommentText={setCommentText}
           setBidOpen={setBidOpen}
+          openBooking={openBooking}
           submitComment={submitComment}
           toggleLike={toggleLike}
           contactSeller={contactSeller}
@@ -1506,6 +1653,7 @@ function App() {
         openError={() => setPage('error')}
       />
       {renderBidModal()}
+      {renderBookingModal()}
       {renderAuthModal()}
     </main>
   )

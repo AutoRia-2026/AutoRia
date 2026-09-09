@@ -159,6 +159,49 @@ class Message(models.Model):
         return f'{self.sender_id}: {self.text[:40]}'
 
 
+class RentalBooking(models.Model):
+    STATUS_PENDING = 'pending'
+    STATUS_CONFIRMED = 'confirmed'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_CONFIRMED, 'Confirmed'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    car = models.ForeignKey(
+        Car,
+        on_delete=models.CASCADE,
+        related_name='rental_bookings',
+    )
+    renter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='rental_bookings',
+    )
+    seller = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_rental_bookings',
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+    pickup_location = models.CharField(max_length=120)
+    dropoff_location = models.CharField(max_length=120, blank=True)
+    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    deposit = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.renter_id} booking {self.car_id} from {self.start_date} to {self.end_date}'
+
+
 class CarComment(models.Model):
     car = models.ForeignKey(
         Car,

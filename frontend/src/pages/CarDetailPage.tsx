@@ -11,6 +11,7 @@ type CarDetailPageProps = {
   isCommentSending: boolean
   setCommentText: (value: string) => void
   setBidOpen: (value: boolean) => void
+  openBooking: (car: Car) => void
   submitComment: (event: FormEvent<HTMLFormElement>) => void
   toggleLike: (car: Car) => void
   contactSeller: (car: Car) => void
@@ -37,6 +38,7 @@ function CarDetailPage({
   isCommentSending,
   setCommentText,
   setBidOpen,
+  openBooking,
   submitComment,
   toggleLike,
   contactSeller,
@@ -59,6 +61,11 @@ function CarDetailPage({
           <button type="button" onClick={() => contactSeller(car)}>
             Contact Seller
           </button>
+          {car.is_available_for_rent && (
+            <button type="button" onClick={() => openBooking(car)}>
+              Book rental
+            </button>
+          )}
           <button type="button" aria-label="Like car" onClick={() => toggleLike(car)}>Heart</button>
           <button type="button" aria-label="Share car" onClick={() => showNotice('Share link copied')}>Share</button>
         </div>

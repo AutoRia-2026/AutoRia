@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from accounts.models import SellerProfile
 
-from .models import Car, CarComment, CarImage, CarLike, CarReview, Conversation, Message, SavedSearch
+from .models import Car, CarComment, CarImage, CarLike, CarReview, Conversation, Message, RentalBooking, SavedSearch
 
 
 class CarFilterTests(APITestCase):
@@ -831,3 +834,127 @@ class ConversationTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(message.is_read)
+
+
+class RentalBookingTests(APITestCase):
+    def setUp(self):
+        self.seller = get_user_model().objects.create_user(
+            username='rentalseller',
+            email='rentalseller@example.com',
+            password='StrongPass123',
+        )
+        self.renter = get_user_model().objects.create_user(
+            username='rentalrenter',
+            email='rentalrenter@example.com',
+            password='StrongPass123',
+        )
+        self.car = Car.objects.create(
+            owner=self.seller,
+            brand='Porsche',
+            model='Macan',
+            year=2023,
+            mileage=14000,
+            price='65000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+            is_available_for_rent=True,
+            rent_price_per_day='180.00',
+            rent_deposit='700.00',
+            minimum_rent_days=2,
+        )
+        self.start_date = timezone.localdate() + timedelta(days=3)
+        self.end_date = self.start_date + timedelta(days=2)
+
+    def test_renter_can_create_booking(self):
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            '/api/cars/bookings/',
+            {
+                'car': self.car.id,
+                'start_date': self.start_date.isoformat(),
+                'end_date': self.end_date.isoformat(),
+                'pickup_location': 'Kyiv Center',
+                'dropoff_location': 'Kyiv Center',
+            },
+            format='json',
+        )
+
+        booking = RentalBooking.objects.get()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(booking.renter, self.renter)
+        self.assertEqual(booking.seller, self.seller)
+        self.assertEqual(booking.total_price, 540)
+        self.assertEqual(booking.deposit, 700)
+        self.assertEqual(response.data['status'], RentalBooking.STATUS_PENDING)
+
+    def test_booking_respects_minimum_rent_days(self):
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(
+            '/api/cars/bookings/',
+            {
+                'car': self.car.id,
+                'start_date': self.start_date.isoformat(),
+                'end_date': self.start_date.isoformat(),
+                'pickup_location': 'Kyiv Center',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(RentalBooking.objects.count(), 0)
+
+    def test_owner_cannot_book_own_car(self):
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.post(
+            '/api/cars/bookings/',
+            {
+                'car': self.car.id,
+                'start_date': self.start_date.isoformat(),
+                'end_date': self.end_date.isoformat(),
+                'pickup_location': 'Kyiv Center',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_seller_can_confirm_booking(self):
+        booking = RentalBooking.objects.create(
+            car=self.car,
+            renter=self.renter,
+            seller=self.seller,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            pickup_location='Kyiv Center',
+            total_price='540.00',
+            deposit='700.00',
+        )
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.post(f'/api/cars/bookings/{booking.id}/confirm/')
+
+        booking.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(booking.status, RentalBooking.STATUS_CONFIRMED)
+
+    def test_renter_cannot_confirm_booking(self):
+        booking = RentalBooking.objects.create(
+            car=self.car,
+            renter=self.renter,
+            seller=self.seller,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            pickup_location='Kyiv Center',
+            total_price='540.00',
+            deposit='700.00',
+        )
+        self.client.force_authenticate(user=self.renter)
+
+        response = self.client.post(f'/api/cars/bookings/{booking.id}/confirm/')
+
+        self.assertEqual(response.status_code, 403)

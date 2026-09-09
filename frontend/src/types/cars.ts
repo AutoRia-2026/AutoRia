@@ -125,3 +125,31 @@ export type Conversation = {
   created_at: string
   updated_at: string
 }
+
+export type RentalBooking = {
+  id: number
+  car: number
+  car_title: string
+  car_image_url: string
+  renter: number
+  renter_name: string
+  seller: number
+  seller_name: string
+  start_date: string
+  end_date: string
+  pickup_location: string
+  dropoff_location: string
+  days: number
+  total_price: string
+  deposit: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export type RentalBookingForm = {
+  start_date: string
+  end_date: string
+  pickup_location: string
+  dropoff_location: string
+}

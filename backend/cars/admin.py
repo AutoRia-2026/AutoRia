@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Car, CarComment, CarImage, CarLike, CarReview, Conversation, Message, SavedSearch
+from .models import Car, CarComment, CarImage, CarLike, CarReview, Conversation, Message, RentalBooking, SavedSearch
 
 
 class CarImageInline(admin.TabularInline):
@@ -68,6 +68,13 @@ class MessageAdmin(admin.ModelAdmin):
     list_display = ['id', 'conversation', 'sender', 'is_read', 'created_at']
     list_filter = ['is_read', 'created_at']
     search_fields = ['text', 'sender__username', 'sender__email']
+
+
+@admin.register(RentalBooking)
+class RentalBookingAdmin(admin.ModelAdmin):
+    list_display = ['id', 'car', 'renter', 'seller', 'start_date', 'end_date', 'total_price', 'status', 'created_at']
+    list_filter = ['status', 'start_date', 'created_at']
+    search_fields = ['car__brand', 'car__model', 'renter__username', 'seller__username', 'pickup_location']
 
 
 @admin.register(CarReview)

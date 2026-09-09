@@ -2447,7 +2447,8 @@ textarea:focus {
 
 .auth-content input[type='email'],
 .auth-content input[type='password'],
-.auth-content input[type='text'] {
+.auth-content input[type='text'],
+.auth-content input[type='date'] {
   width: 100%;
   height: 32px;
   margin-top: 8px;
@@ -2458,6 +2459,10 @@ textarea:focus {
   background: rgba(7, 16, 34, 0.62);
   color: #ffffff;
   font-size: 12px;
+}
+
+.rental-booking-card {
+  width: min(440px, calc(100vw - 32px));
 }
 
 .auth-content input::placeholder,

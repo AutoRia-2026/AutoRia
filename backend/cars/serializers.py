@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from decimal import Decimal, ROUND_HALF_UP
+from django.utils import timezone
 
-from .models import Car, CarComment, CarImage, CarReview, Conversation, Message, SavedSearch
+from .models import Car, CarComment, CarImage, CarReview, Conversation, Message, RentalBooking, SavedSearch
 
 
 class CarImageSerializer(serializers.ModelSerializer):
@@ -132,6 +133,70 @@ class ConversationSerializer(serializers.ModelSerializer):
             return 0
 
         return conversation.messages.exclude(sender=request.user).filter(is_read=False).count()
+
+
+class RentalBookingSerializer(serializers.ModelSerializer):
+    car_title = serializers.SerializerMethodField()
+    car_image_url = serializers.ReadOnlyField(source='car.image_url')
+    renter_name = serializers.ReadOnlyField(source='renter.username')
+    seller_name = serializers.ReadOnlyField(source='seller.username')
+    days = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RentalBooking
+        fields = [
+            'id',
+            'car',
+            'car_title',
+            'car_image_url',
+            'renter',
+            'renter_name',
+            'seller',
+            'seller_name',
+            'start_date',
+            'end_date',
+            'pickup_location',
+            'dropoff_location',
+            'days',
+            'total_price',
+            'deposit',
+            'status',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'car_title',
+            'car_image_url',
+            'renter',
+            'renter_name',
+            'seller',
+            'seller_name',
+            'days',
+            'total_price',
+            'deposit',
+            'status',
+            'created_at',
+            'updated_at',
+        ]
+
+    def validate(self, attrs):
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+
+        if start_date and start_date < timezone.localdate():
+            raise serializers.ValidationError({'start_date': 'Start date cannot be in the past.'})
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError({'end_date': 'End date cannot be before start date.'})
+
+        return attrs
+
+    def get_car_title(self, booking):
+        return str(booking.car)
+
+    def get_days(self, booking):
+        return (booking.end_date - booking.start_date).days + 1
 
 
 class CarSerializer(serializers.ModelSerializer):
