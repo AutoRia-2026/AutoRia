@@ -11,7 +11,7 @@ type BuyCarCardProps = {
 function BuyCarCard({ car, mode = 'buy', openCar, toggleLike }: BuyCarCardProps) {
   const priceNumber = Number(car.price)
   const oldPrice = Math.round(priceNumber * 1.12)
-  const dailyPrice = Math.max(35, Math.round(priceNumber * 0.004))
+  const dailyPrice = Number(car.rent_price_per_day || car.effective_rent_price_per_day || Math.max(35, Math.round(priceNumber * 0.004)))
   const badge = priceNumber < 30000 ? 'Good price' : priceNumber > 70000 ? 'Great price' : 'Fair price'
   const displayPrice = mode === 'rent' ? `$${dailyPrice}/day` : formatPrice(car.price)
 

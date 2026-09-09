@@ -43,6 +43,12 @@ export type Car = {
   year: number
   mileage: number
   price: string
+  is_available_for_rent: boolean
+  rent_price_per_day: string | null
+  rent_price_per_week: string | null
+  rent_deposit: string | null
+  minimum_rent_days: number
+  effective_rent_price_per_day: string
   transmission: string
   fuel_type: string
   image_url: string

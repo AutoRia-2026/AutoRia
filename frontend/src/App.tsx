@@ -184,6 +184,7 @@ function App() {
     if (yearMax) params.set('year_max', yearMax)
     if (mileageMax) params.set('mileage_max', mileageMax)
     if (ordering) params.set('ordering', ordering)
+    if (page === 'rent') params.set('rental', 'true')
 
     const url = pageUrl || `${API_URL}/cars/?${params.toString()}`
 
@@ -207,7 +208,7 @@ function App() {
       .finally(() => setIsCarsLoading(false))
 
     return () => controller.abort()
-  }, [brand, fuelType, mileageMax, modelFilter, ordering, pageUrl, priceMax, refreshIndex, search, yearMax, yearMin])
+  }, [brand, fuelType, mileageMax, modelFilter, ordering, page, pageUrl, priceMax, refreshIndex, search, yearMax, yearMin])
 
   useEffect(() => {
     if (page !== 'reviews') {
@@ -301,12 +302,14 @@ function App() {
 
   function openBuy() {
     setPage('buy')
+    setPageUrl(null)
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function openRent() {
     setPage('rent')
+    setPageUrl(null)
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }

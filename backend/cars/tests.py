@@ -120,6 +120,33 @@ class CarFilterTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['model'], 'X3')
 
+    def test_filter_rental_cars(self):
+        Car.objects.filter(model='X3').update(is_available_for_rent=False)
+
+        response = self.client.get('/api/cars/?rental=true')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+        self.assertTrue(all(car['is_available_for_rent'] for car in response.data['results']))
+
+    def test_car_response_includes_rental_fields(self):
+        Car.objects.filter(model='X5').update(
+            rent_price_per_day='140.00',
+            rent_price_per_week='850.00',
+            rent_deposit='500.00',
+            minimum_rent_days=2,
+        )
+
+        response = self.client.get('/api/cars/?model=X5')
+
+        self.assertEqual(response.status_code, 200)
+        car = response.data['results'][0]
+        self.assertEqual(car['rent_price_per_day'], '140.00')
+        self.assertEqual(car['rent_price_per_week'], '850.00')
+        self.assertEqual(car['rent_deposit'], '500.00')
+        self.assertEqual(car['minimum_rent_days'], 2)
+        self.assertEqual(car['effective_rent_price_per_day'], '140.00')
+
 
 class CarPaginationTests(APITestCase):
     def setUp(self):

@@ -37,6 +37,7 @@ class CarViewSet(viewsets.ModelViewSet):
         year_max = params.get('year_max')
         mileage_min = params.get('mileage_min')
         mileage_max = params.get('mileage_max')
+        rental = params.get('rental')
         search = params.get('search')
         ordering = params.get('ordering')
         car_status = params.get('status')
@@ -67,6 +68,9 @@ class CarViewSet(viewsets.ModelViewSet):
 
         if mileage_max:
             queryset = queryset.filter(mileage__lte=mileage_max)
+
+        if rental in {'true', '1', 'yes'}:
+            queryset = queryset.filter(is_available_for_rent=True)
 
         if car_status in {Car.STATUS_ACTIVE, Car.STATUS_SOLD, Car.STATUS_HIDDEN}:
             queryset = queryset.filter(status=car_status)

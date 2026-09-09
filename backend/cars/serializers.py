@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from decimal import Decimal, ROUND_HALF_UP
 
 from .models import Car, CarComment, CarImage, CarReview, SavedSearch
 
@@ -69,6 +70,7 @@ class CarSerializer(serializers.ModelSerializer):
     comments = CarCommentSerializer(many=True, read_only=True)
     reviews = CarReviewSerializer(many=True, read_only=True)
     reviews_count = serializers.IntegerField(source='reviews.count', read_only=True)
+    effective_rent_price_per_day = serializers.SerializerMethodField()
 
     class Meta:
         model = Car
@@ -81,6 +83,12 @@ class CarSerializer(serializers.ModelSerializer):
             'year',
             'mileage',
             'price',
+            'is_available_for_rent',
+            'rent_price_per_day',
+            'rent_price_per_week',
+            'rent_deposit',
+            'minimum_rent_days',
+            'effective_rent_price_per_day',
             'transmission',
             'fuel_type',
             'image_url',
@@ -105,6 +113,7 @@ class CarSerializer(serializers.ModelSerializer):
             'promoted_at',
             'views_count',
             'likes_count',
+            'effective_rent_price_per_day',
             'comments',
             'reviews',
             'reviews_count',
@@ -117,6 +126,20 @@ class CarSerializer(serializers.ModelSerializer):
         car = Car.objects.create(**validated_data)
         self._save_images(car, images_data)
         return car
+
+    def validate(self, attrs):
+        minimum_rent_days = attrs.get('minimum_rent_days')
+        rent_fields = ['rent_price_per_day', 'rent_price_per_week', 'rent_deposit']
+
+        if minimum_rent_days is not None and minimum_rent_days < 1:
+            raise serializers.ValidationError({'minimum_rent_days': 'Minimum rent days must be at least 1.'})
+
+        for field in rent_fields:
+            value = attrs.get(field)
+            if value is not None and value <= 0:
+                raise serializers.ValidationError({field: 'Rental amounts must be greater than 0.'})
+
+        return attrs
 
     def update(self, instance, validated_data):
         images_data = validated_data.pop('images', None)
@@ -152,3 +175,10 @@ class CarSerializer(serializers.ModelSerializer):
             'phone': profile.phone if profile else '',
             'city': profile.city if profile else '',
         }
+
+    def get_effective_rent_price_per_day(self, car):
+        if car.rent_price_per_day:
+            return str(car.rent_price_per_day)
+
+        estimated_price = (Decimal(car.price) * Decimal('0.004')).quantize(Decimal('1.00'), rounding=ROUND_HALF_UP)
+        return str(max(estimated_price, Decimal('35.00')))
