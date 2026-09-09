@@ -321,7 +321,41 @@ function App() {
       return
     }
 
-    loadConversations()
+    let isCurrent = true
+    setIsConversationsLoading(true)
+
+    apiRequest('/cars/conversations/', {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    })
+      .then((data) => {
+        if (!isCurrent) {
+          return
+        }
+
+        const loadedConversations = data as Conversation[]
+        setConversations(loadedConversations)
+        setActiveConversation((currentConversation) => (
+          currentConversation
+            ? loadedConversations.find((conversation) => conversation.id === currentConversation.id) || loadedConversations[0] || null
+            : loadedConversations[0] || null
+        ))
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          showNotice(parseApiError(requestError))
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsConversationsLoading(false)
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
   }, [page, token])
 
   function showNotice(text: string) {
@@ -503,7 +537,17 @@ function App() {
       return
     }
 
-    showNotice(`${tab} filter will be connected when this backend field is added`)
+    if (tab === 'Certified pre-owned') {
+      setSearch('certified')
+      setOrdering('-year')
+      return
+    }
+
+    if (tab === 'Import/Auctions') {
+      setSearch('import auction')
+      setOrdering('-created_at')
+      return
+    }
   }
 
   async function saveSearch() {
@@ -897,33 +941,6 @@ function App() {
       showNotice('Listing updated')
     } catch (requestError) {
       showNotice(parseApiError(requestError))
-    }
-  }
-
-  async function loadConversations(selectedId?: number) {
-    if (!token) {
-      return
-    }
-
-    setIsConversationsLoading(true)
-    try {
-      const data = (await apiRequest('/cars/conversations/', {
-        headers: {
-          Authorization: `Token ${token}`,
-        },
-      })) as Conversation[]
-
-      setConversations(data)
-      const selectedConversation = selectedId
-        ? data.find((conversation) => conversation.id === selectedId)
-        : activeConversation
-          ? data.find((conversation) => conversation.id === activeConversation.id)
-          : data[0]
-      setActiveConversation(selectedConversation || data[0] || null)
-    } catch (requestError) {
-      showNotice(parseApiError(requestError))
-    } finally {
-      setIsConversationsLoading(false)
     }
   }
 
@@ -1531,6 +1548,7 @@ function App() {
           isLoading={isReviewsLoading}
           startReview={startReview}
           goHome={() => clearCatalogFilters('buy')}
+          showNotice={showNotice}
         />
       ) : page === 'review-form' ? (
         <LeaveReviewPage
@@ -1647,7 +1665,6 @@ function App() {
       )}
 
       <Footer
-        showNotice={showNotice}
         openSupport={() => openProfile('support')}
         openBuy={openBuy}
         openError={() => setPage('error')}

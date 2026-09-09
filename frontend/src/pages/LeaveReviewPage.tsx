@@ -1,4 +1,5 @@
-import type { FormEvent } from 'react'
+import { useState } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import type { Car } from '../types/cars'
 import { carTitle, fallbackImage, formatPrice } from '../utils/cars'
 
@@ -27,6 +28,23 @@ function LeaveReviewPage({
   submitReview,
   cancel,
 }: LeaveReviewPageProps) {
+  const [photos, setPhotos] = useState<string[]>([])
+
+  function addPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setPhotos((currentPhotos) => [...currentPhotos, String(reader.result)].slice(0, 5))
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
     <section className="leave-review-page">
       <div className="reviews-heading">
@@ -56,7 +74,7 @@ function LeaveReviewPage({
                   onClick={() => setRating(star)}
                   aria-label={`${star} stars`}
                 >
-                  ★
+                  *
                 </button>
               ))}
             </div>
@@ -83,7 +101,14 @@ function LeaveReviewPage({
 
         <section className="upload-box">
           <h2>Upload Photos (optional)</h2>
-          <div>{[1, 2, 3, 4, 5].map((item) => <button key={item} type="button">+</button>)}</div>
+          <div>
+            {[0, 1, 2, 3, 4].map((item) => (
+              <label key={item} className={photos[item] ? 'filled' : ''}>
+                {photos[item] ? <img src={photos[item]} alt={`Review upload ${item + 1}`} /> : '+'}
+                <input type="file" accept="image/*" onChange={addPhoto} disabled={photos.length >= 5 && !photos[item]} />
+              </label>
+            ))}
+          </div>
         </section>
 
         <div className="review-form-actions">

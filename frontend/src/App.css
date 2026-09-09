@@ -667,12 +667,30 @@ textarea:focus {
   gap: 34px;
 }
 
-.upload-box button {
+.upload-box label {
   width: 100px;
   height: 100px;
+  display: grid;
+  place-items: center;
   border: 1px dashed rgba(170, 186, 217, 0.34);
   background: #0b1424;
   color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.upload-box label.filled {
+  border-style: solid;
+}
+
+.upload-box input {
+  display: none;
+}
+
+.upload-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .review-form-actions {
@@ -2068,7 +2086,7 @@ textarea:focus {
   gap: 8px !important;
 }
 
-.social-icons button {
+.social-icons a {
   width: 28px !important;
   height: 28px;
   display: grid;
@@ -2077,6 +2095,7 @@ textarea:focus {
   border-radius: 50%;
   color: #ffffff !important;
   text-align: center !important;
+  text-decoration: none;
 }
 
 .newsletter-copy,
@@ -3063,6 +3082,10 @@ textarea:focus {
   padding: 16px 18px;
 }
 
+.notification-group article.muted {
+  opacity: 0.64;
+}
+
 .notification-group article + article {
   border-top: 1px solid rgba(178, 191, 211, 0.08);
 }
@@ -3348,6 +3371,7 @@ textarea:focus {
 }
 
 .listing-side {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(84px, 1fr) 72px 82px 96px 96px 24px;
   gap: 10px;
@@ -3403,6 +3427,36 @@ textarea:focus {
   border: 0;
   padding: 0;
   background: transparent;
+}
+
+.listing-menu-popover {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  z-index: 5;
+  display: grid;
+  min-width: 130px;
+  padding: 8px;
+  border: 1px solid rgba(178, 191, 211, 0.18);
+  border-radius: 8px;
+  background: #101a2c;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+}
+
+.listing-menu-popover button,
+.listing-side .listing-menu-popover button:last-child {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #dce5f2;
+  text-align: left;
+}
+
+.listing-menu-popover button:hover {
+  background: rgba(76, 101, 146, 0.35);
 }
 
 .error-page {

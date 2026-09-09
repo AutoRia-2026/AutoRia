@@ -1,4 +1,5 @@
 import { buyTabs } from '../constants/cars'
+import { API_URL } from '../api/client'
 import type { Car } from '../types/cars'
 import BuyCarCard from '../components/BuyCarCard'
 import BuySidebar from '../components/BuySidebar'
@@ -78,6 +79,31 @@ function RentPage({
   toggleLike,
 }: RentPageProps) {
   const heading = search.trim() || brand || modelFilter || 'Choose your car'
+  const pageSize = 10
+  const totalPages = Math.max(1, Math.ceil(carsCount / pageSize))
+  const pageNumbers = Array.from({ length: Math.min(totalPages, 5) }, (_, index) => index + 1)
+
+  function buildPageUrl(pageNumber: number) {
+    if (pageNumber === 1) {
+      return null
+    }
+
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('search', search.trim())
+    if (brand) params.set('brand', brand)
+    if (modelFilter) params.set('model', modelFilter)
+    if (fuelType) params.set('fuel_type', fuelType)
+    if (priceMax) params.set('price_max', priceMax)
+    if (yearMin) params.set('year_min', yearMin)
+    if (yearMax) params.set('year_max', yearMax)
+    if (mileageMax) params.set('mileage_max', mileageMax)
+    if (colorFilter) params.set('color', colorFilter)
+    if (ordering) params.set('ordering', ordering)
+    params.set('rental', 'true')
+    params.set('page', String(pageNumber))
+
+    return `${API_URL}/cars/?${params.toString()}`
+  }
 
   return (
     <section className="buy-page rent-page">
@@ -164,10 +190,11 @@ function RentPage({
 
           <div className="buy-pagination">
             <button type="button" disabled={!previousPage} onClick={() => setPageUrl(previousPage)}>Prev</button>
-            <span>1</span>
-            <button type="button" onClick={() => showNotice('Page 2 will load when more cars are added')}>2</button>
-            <button type="button" onClick={() => showNotice('Page 3 will load when more cars are added')}>3</button>
-            <button type="button" onClick={() => showNotice('Page 4 will load when more cars are added')}>4</button>
+            {pageNumbers.map((pageNumber) => (
+              <button key={pageNumber} type="button" onClick={() => setPageUrl(buildPageUrl(pageNumber))}>
+                {pageNumber}
+              </button>
+            ))}
             <button type="button" disabled={!nextPage} onClick={() => setPageUrl(nextPage)}>Next</button>
           </div>
         </section>

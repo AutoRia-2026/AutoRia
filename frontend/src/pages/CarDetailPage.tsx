@@ -49,6 +49,19 @@ function CarDetailPage({
 }: CarDetailPageProps) {
   const reviews = car.reviews || []
   const firstReview = reviews[0]
+  const shareUrl = `${window.location.origin}${window.location.pathname}#car-${car.id}`
+
+  function copyShareLink() {
+    if (!navigator.clipboard) {
+      showNotice(shareUrl)
+      return
+    }
+
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => showNotice('Share link copied'))
+      .catch(() => showNotice(shareUrl))
+  }
 
   return (
     <section className="car-detail-page">
@@ -67,7 +80,7 @@ function CarDetailPage({
             </button>
           )}
           <button type="button" aria-label="Like car" onClick={() => toggleLike(car)}>Heart</button>
-          <button type="button" aria-label="Share car" onClick={() => showNotice('Share link copied')}>Share</button>
+          <button type="button" aria-label="Share car" onClick={copyShareLink}>Share</button>
         </div>
       </div>
 
@@ -88,23 +101,23 @@ function CarDetailPage({
           <h2>Overview</h2>
           <dl>
             <div><dt>Make</dt><dd>{car.brand}</dd></div>
-            <div><dt>Body Type</dt><dd>Coupe</dd></div>
+            <div><dt>Body Type</dt><dd>{car.body_type || 'Not specified'}</dd></div>
             <div><dt>Model</dt><dd>{car.model}</dd></div>
-            <div><dt>Drive Type</dt><dd>RWD</dd></div>
+            <div><dt>Drive Type</dt><dd>{car.transmission === 'automatic' ? 'Automatic' : 'Manual'}</dd></div>
             <div><dt>Year</dt><dd>{car.year}</dd></div>
-            <div><dt>Engine</dt><dd>4.0L</dd></div>
+            <div><dt>Engine</dt><dd>{car.fuel_type}</dd></div>
             <div><dt>Mileage</dt><dd>{formatMileage(car.mileage)}</dd></div>
-            <div><dt>Color</dt><dd>Ice Grey Metallic</dd></div>
+            <div><dt>Color</dt><dd>{car.color || 'Not specified'}</dd></div>
             <div><dt>Fuel Type</dt><dd>{car.fuel_type}</dd></div>
             <div><dt>VIN</dt><dd>WP0AF2A95PS{String(car.id).padStart(5, '0')}</dd></div>
             <div><dt>Transmission</dt><dd>{car.transmission}</dd></div>
-            <div><dt>Condition</dt><dd>Used-Excellent</dd></div>
+            <div><dt>Condition</dt><dd>{car.condition || 'Used'}</dd></div>
           </dl>
         </section>
 
         <section className="detail-panel features-panel">
           <h2>Features</h2>
-          {features.map((feature) => <span key={feature}>✓ {feature}</span>)}
+          {features.map((feature) => <span key={feature}>OK {feature}</span>)}
         </section>
 
         <section className="detail-panel description-panel">
@@ -120,7 +133,7 @@ function CarDetailPage({
           {firstReview ? (
             <article>
               <strong>{firstReview.username}</strong>
-              <span>{'★'.repeat(firstReview.rating)}{'☆'.repeat(5 - firstReview.rating)}</span>
+              <span>{'*'.repeat(firstReview.rating)}{'-'.repeat(5 - firstReview.rating)}</span>
               <p>{firstReview.text}</p>
             </article>
           ) : (
