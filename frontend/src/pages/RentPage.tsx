@@ -147,9 +147,7 @@ function RentPage({
             />
           </label>
 
-          {colorFilter && (
-            <p className="soft-note">Color filter selected: {colorFilter}. This field will be connected after adding color to the car model.</p>
-          )}
+          {colorFilter && <p className="soft-note">Color filter selected: {colorFilter}</p>}
           {carsError && <p className="cars-error">{carsError}</p>}
 
           <div className="buy-grid">

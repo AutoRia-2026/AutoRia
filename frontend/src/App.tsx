@@ -17,8 +17,9 @@ import ProfilePage from './pages/ProfilePage'
 import RentPage from './pages/RentPage'
 import ReviewsPage from './pages/ReviewsPage'
 import ReviewSubmittedPage from './pages/ReviewSubmittedPage'
+import SellPage from './pages/SellPage'
 import type { AuthResponse, AuthScreen, Page, ProfileSection, User } from './types/auth'
-import type { Car, CarComment, CarReview, CarsResponse } from './types/cars'
+import type { Car, CarComment, CarReview, CarsResponse, SellListingForm } from './types/cars'
 import { carTitle, formatPrice } from './utils/cars'
 
 function App() {
@@ -94,6 +95,33 @@ function App() {
   const [profileMessage, setProfileMessage] = useState('')
   const [profileError, setProfileError] = useState('')
   const [isProfileSaving, setIsProfileSaving] = useState(false)
+  const [sellForm, setSellForm] = useState<SellListingForm>({
+    brand: '',
+    model: '',
+    year: '',
+    body_type: '',
+    fuel_type: '',
+    transmission: '',
+    mileage: '',
+    condition: '',
+    color: '',
+    description: '',
+    price: '',
+    phone: '',
+    full_name: '',
+    city: '',
+    email: '',
+    is_available_for_rent: true,
+    rent_price_per_day: '',
+    rent_price_per_week: '',
+    rent_deposit: '',
+    minimum_rent_days: '1',
+    images: ['', '', ''],
+  })
+  const [sellMessage, setSellMessage] = useState('')
+  const [sellError, setSellError] = useState('')
+  const [isSellSaving, setIsSellSaving] = useState(false)
+  const [latestListing, setLatestListing] = useState<Car | null>(null)
 
   const models = useMemo(
     () => Array.from(new Set(cars.map((car) => car.model))).sort(),
@@ -169,6 +197,13 @@ function App() {
       street_address: user.seller_profile?.street_address || '',
       state_province: user.seller_profile?.state_province || '',
     })
+    setSellForm((currentForm) => ({
+      ...currentForm,
+      phone: currentForm.phone || user.seller_profile?.phone || '',
+      full_name: currentForm.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || '',
+      city: currentForm.city || user.seller_profile?.city || '',
+      email: currentForm.email || user.email || '',
+    }))
   }, [user])
 
   useEffect(() => {
@@ -183,6 +218,7 @@ function App() {
     if (yearMin) params.set('year_min', yearMin)
     if (yearMax) params.set('year_max', yearMax)
     if (mileageMax) params.set('mileage_max', mileageMax)
+    if (colorFilter) params.set('color', colorFilter)
     if (ordering) params.set('ordering', ordering)
     if (page === 'rent') params.set('rental', 'true')
 
@@ -208,7 +244,7 @@ function App() {
       .finally(() => setIsCarsLoading(false))
 
     return () => controller.abort()
-  }, [brand, fuelType, mileageMax, modelFilter, ordering, page, pageUrl, priceMax, refreshIndex, search, yearMax, yearMin])
+  }, [brand, colorFilter, fuelType, mileageMax, modelFilter, ordering, page, pageUrl, priceMax, refreshIndex, search, yearMax, yearMin])
 
   useEffect(() => {
     if (page !== 'reviews') {
@@ -310,6 +346,19 @@ function App() {
   function openRent() {
     setPage('rent')
     setPageUrl(null)
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openSell() {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    setPage('sell')
+    setSellMessage('')
+    setSellError('')
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -438,16 +487,6 @@ function App() {
     } catch (requestError) {
       showNotice(parseApiError(requestError))
     }
-  }
-
-  function openProtectedPage(nextPage: Page, fallbackMessage = 'Please sign in first') {
-    if (!token) {
-      openAuth('login')
-      return
-    }
-
-    setPage(nextPage)
-    if (fallbackMessage) showNotice(fallbackMessage)
   }
 
   async function openCar(car: Car) {
@@ -816,6 +855,117 @@ function App() {
     }
   }
 
+  function resetSellForm() {
+    setSellForm({
+      brand: '',
+      model: '',
+      year: '',
+      body_type: '',
+      fuel_type: '',
+      transmission: '',
+      mileage: '',
+      condition: '',
+      color: '',
+      description: '',
+      price: '',
+      phone: user?.seller_profile?.phone || '',
+      full_name: user ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username : '',
+      city: user?.seller_profile?.city || '',
+      email: user?.email || '',
+      is_available_for_rent: true,
+      rent_price_per_day: '',
+      rent_price_per_week: '',
+      rent_deposit: '',
+      minimum_rent_days: '1',
+      images: ['', '', ''],
+    })
+  }
+
+  function cleanNumber(value: string) {
+    return value.replace(/[^\d.]/g, '')
+  }
+
+  function buildSellPayload(status: 'active' | 'hidden') {
+    const images = sellForm.images
+      .map((image) => image.trim())
+      .filter(Boolean)
+      .map((image_url, position) => ({ image_url, position }))
+    const descriptionParts = [
+      sellForm.description.trim(),
+      sellForm.phone.trim() ? `Phone: ${sellForm.phone.trim()}` : '',
+      sellForm.full_name.trim() ? `Contact: ${sellForm.full_name.trim()}` : '',
+      sellForm.city.trim() ? `City: ${sellForm.city.trim()}` : '',
+      sellForm.email.trim() ? `Email: ${sellForm.email.trim()}` : '',
+    ].filter(Boolean)
+
+    return {
+      brand: sellForm.brand,
+      model: sellForm.model.trim(),
+      year: Number(cleanNumber(sellForm.year)),
+      mileage: Number(cleanNumber(sellForm.mileage)),
+      price: cleanNumber(sellForm.price),
+      transmission: sellForm.transmission,
+      fuel_type: sellForm.fuel_type,
+      body_type: sellForm.body_type,
+      condition: sellForm.condition,
+      color: sellForm.color,
+      image_url: images[0]?.image_url || '',
+      description: descriptionParts.join('\n'),
+      status,
+      is_available_for_rent: sellForm.is_available_for_rent,
+      rent_price_per_day: sellForm.rent_price_per_day ? cleanNumber(sellForm.rent_price_per_day) : null,
+      rent_price_per_week: sellForm.rent_price_per_week ? cleanNumber(sellForm.rent_price_per_week) : null,
+      rent_deposit: sellForm.rent_deposit ? cleanNumber(sellForm.rent_deposit) : null,
+      minimum_rent_days: Number(cleanNumber(sellForm.minimum_rent_days || '1')),
+      images,
+    }
+  }
+
+  async function createSellListing(status: 'active' | 'hidden') {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    setSellMessage('')
+    setSellError('')
+    setIsSellSaving(true)
+
+    try {
+      const listing = (await apiRequest('/cars/', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify(buildSellPayload(status)),
+      })) as Car
+
+      setLatestListing(listing)
+      setCars((currentCars) => [listing, ...currentCars])
+      setMyListings((currentListings) => [listing, ...currentListings])
+      setRefreshIndex((currentValue) => currentValue + 1)
+      setSellMessage(status === 'active' ? 'Listing published' : 'Draft saved')
+      resetSellForm()
+      if (status === 'active') {
+        showNotice('Listing published')
+        openCar(listing)
+      }
+    } catch (requestError) {
+      setSellError(parseApiError(requestError))
+    } finally {
+      setIsSellSaving(false)
+    }
+  }
+
+  function submitSellListing(event: FormEvent<HTMLFormElement>, status: 'active' | 'hidden') {
+    event.preventDefault()
+    void createSellListing(status)
+  }
+
+  function saveSellDraft() {
+    void createSellListing('hidden')
+  }
+
   async function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -1005,6 +1155,7 @@ function App() {
         goHome={goHome}
         openRent={openRent}
         openBuy={openBuy}
+        openSell={openSell}
         openError={() => setPage('error')}
         openAuth={() => openAuth('login')}
         setPageProfile={() => openProfile('edit')}
@@ -1019,11 +1170,11 @@ function App() {
         user={user}
         goHome={goHome}
         openRent={openRent}
+        openSell={openSell}
         openAuth={() => openAuth('login')}
         openProfile={openProfile}
         openError={() => setPage('error')}
         applyBuyTab={applyBuyTab}
-        openProtectedPage={openProtectedPage}
       />
       {notice && <div className="toast-message">{notice}</div>}
 
@@ -1091,6 +1242,18 @@ function App() {
         <ReviewSubmittedPage openReviews={openReviews} goHome={goHome} />
       ) : page === 'error' ? (
         <ErrorPage goHome={goHome} />
+      ) : page === 'sell' && user ? (
+        <SellPage
+          form={sellForm}
+          isSaving={isSellSaving}
+          message={sellMessage}
+          error={sellError}
+          latestListing={latestListing}
+          setForm={setSellForm}
+          submitListing={submitSellListing}
+          saveDraft={saveSellDraft}
+          cancel={goHome}
+        />
       ) : page === 'buy' ? (
         <BuyPage
           cars={visibleCars}
@@ -1111,7 +1274,7 @@ function App() {
           carsError={carsError}
           previousPage={previousPage}
           nextPage={nextPage}
-          goHome={() => clearCatalogFilters('rent')}
+          goHome={() => clearCatalogFilters('buy')}
           saveSearch={saveSearch}
           updateSearch={updateSearch}
           updateBrand={updateBrand}
@@ -1148,7 +1311,7 @@ function App() {
           carsError={carsError}
           previousPage={previousPage}
           nextPage={nextPage}
-          goHome={goHome}
+          goHome={() => clearCatalogFilters('rent')}
           saveSearch={saveSearch}
           updateSearch={updateSearch}
           updateBrand={updateBrand}

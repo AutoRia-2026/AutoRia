@@ -52,6 +52,7 @@ textarea:focus {
 .leave-review-page,
 .review-submitted-page,
 .account-page,
+.sell-page,
 .logout-page,
 .error-page {
   animation: page-in 260ms ease both;
@@ -73,7 +74,8 @@ textarea:focus {
 .car-detail-page,
 .reviews-page,
 .leave-review-page,
-.review-submitted-page {
+.review-submitted-page,
+.sell-page {
   width: min(1180px, calc(100vw - 56px));
   margin: 0 auto;
 }
@@ -3493,5 +3495,363 @@ textarea:focus {
   .notification-group button {
     grid-column: 2;
     text-align: left;
+  }
+}
+
+.sell-page {
+  padding-bottom: 34px;
+}
+
+.sell-hero {
+  min-height: 420px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 28px;
+  background:
+    linear-gradient(90deg, rgba(5, 11, 24, 0.96) 0%, rgba(5, 11, 24, 0.7) 36%, rgba(5, 11, 24, 0.24) 100%),
+    url('https://images.unsplash.com/photo-1616422285623-13ff0162193c?auto=format&fit=crop&w=1800&q=85') center / cover;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sell-hero-copy {
+  width: min(440px, 100%);
+  padding: 56px 0 48px;
+}
+
+.sell-hero-copy h1 {
+  margin: 0 0 12px;
+  font-size: 38px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.sell-hero-copy p,
+.sell-panel p,
+.sell-photo-drop small {
+  color: #c7d2e3;
+}
+
+.sell-hero-copy ul {
+  display: grid;
+  gap: 18px;
+  margin: 30px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sell-hero-copy li {
+  display: grid;
+  gap: 4px;
+  padding-left: 30px;
+  position: relative;
+}
+
+.sell-hero-copy li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 15px;
+  height: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 3px;
+}
+
+.sell-hero-copy strong {
+  font-size: 14px;
+}
+
+.sell-hero-copy span {
+  color: #b6c1d3;
+  font-size: 12px;
+}
+
+.sell-hero-copy > div {
+  display: flex;
+  gap: 12px;
+}
+
+.sell-hero-copy button,
+.sell-actions button {
+  min-width: 145px;
+  height: 38px;
+  border-radius: 5px;
+  border: 1px solid rgba(110, 130, 164, 0.62);
+  background: #111d33;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sell-hero-copy button:first-child,
+.sell-actions button:last-child {
+  border-color: transparent;
+  background: #2d4f9a;
+}
+
+.sell-form {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.sell-steps {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 258px;
+  padding-top: 2px;
+  border-right: 1px solid rgba(118, 137, 171, 0.42);
+}
+
+.sell-steps span {
+  width: 172px;
+  min-height: 33px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 4px;
+  background: #44516c;
+  color: #e8edf6;
+  font-size: 12px;
+}
+
+.sell-steps span:not(.active) {
+  opacity: 0.82;
+}
+
+.sell-form-body {
+  display: grid;
+  gap: 18px;
+}
+
+.sell-panel {
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(122, 139, 169, 0.24);
+}
+
+.sell-panel h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  line-height: 1.1;
+}
+
+.sell-panel p {
+  margin: 0 0 18px;
+  max-width: 520px;
+  font-size: 12px;
+}
+
+.sell-grid,
+.sell-image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 28px;
+}
+
+.sell-panel label {
+  display: grid;
+  gap: 8px;
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.sell-panel input,
+.sell-panel select,
+.sell-panel textarea {
+  width: 100%;
+  min-height: 31px;
+  border: 1px solid rgba(120, 141, 176, 0.42);
+  border-radius: 4px;
+  background: #071120;
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.sell-panel input,
+.sell-panel select {
+  padding: 0 10px;
+}
+
+.sell-panel textarea {
+  min-height: 82px;
+  resize: vertical;
+  padding: 12px;
+}
+
+.sell-panel > label {
+  margin-top: 18px;
+}
+
+.sell-panel > label span {
+  justify-self: end;
+  color: #8e9ab0;
+  font-size: 10px;
+}
+
+.sell-photo-drop {
+  min-height: 235px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid rgba(120, 141, 176, 0.52);
+  border-radius: 4px;
+  background: rgba(7, 17, 32, 0.64);
+  text-align: center;
+}
+
+.sell-photo-drop img {
+  width: min(360px, 92%);
+  max-height: 145px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.upload-photo-button {
+  min-width: 150px;
+  min-height: 34px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #9aa5b8;
+  color: #0b1424 !important;
+  cursor: pointer;
+}
+
+.upload-photo-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.photo-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 3px solid #ffffff;
+  color: transparent;
+  position: relative;
+}
+
+.photo-icon::before,
+.photo-icon::after {
+  content: '';
+  position: absolute;
+  background: #ffffff;
+}
+
+.photo-icon::before {
+  width: 24px;
+  height: 15px;
+  bottom: 12px;
+  clip-path: polygon(0 100%, 36% 36%, 58% 70%, 74% 46%, 100% 100%);
+}
+
+.photo-icon::after {
+  width: 7px;
+  height: 7px;
+  top: 12px;
+  right: 12px;
+  border-radius: 50%;
+}
+
+.sell-image-grid {
+  margin-top: 16px;
+}
+
+.rent-toggle {
+  width: fit-content;
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  margin-top: 18px;
+  color: #dce5f4 !important;
+}
+
+.rent-toggle input {
+  width: 16px;
+  min-height: 16px;
+  accent-color: #2d4f9a;
+}
+
+.rental-grid {
+  margin-top: 16px;
+}
+
+.sell-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 0 28px;
+}
+
+.sell-actions button:first-child {
+  margin-right: auto;
+}
+
+.sell-actions button:disabled {
+  cursor: progress;
+  opacity: 0.62;
+}
+
+@media (max-width: 980px) {
+  .sell-form {
+    grid-template-columns: 1fr;
+  }
+
+  .sell-steps {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    border-right: 0;
+  }
+
+  .sell-steps span {
+    width: auto;
+  }
+
+  .sell-grid,
+  .sell-image-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .sell-page {
+    width: min(100% - 24px, 720px);
+  }
+
+  .sell-hero-copy {
+    padding: 44px 16px;
+  }
+
+  .sell-hero-copy h1 {
+    font-size: 32px;
+  }
+
+  .sell-hero-copy > div,
+  .sell-actions,
+  .sell-steps,
+  .sell-grid,
+  .sell-image-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sell-hero-copy > div,
+  .sell-actions {
+    display: grid;
+  }
+
+  .sell-actions button,
+  .sell-hero-copy button {
+    width: 100%;
   }
 }

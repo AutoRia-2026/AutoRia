@@ -47,7 +47,10 @@ class Car(models.Model):
     minimum_rent_days = models.PositiveSmallIntegerField(default=1)
     transmission = models.CharField(max_length=20, choices=TRANSMISSION_CHOICES)
     fuel_type = models.CharField(max_length=20, choices=FUEL_CHOICES)
-    image_url = models.URLField(blank=True)
+    body_type = models.CharField(max_length=40, blank=True)
+    condition = models.CharField(max_length=40, blank=True)
+    color = models.CharField(max_length=40, blank=True)
+    image_url = models.TextField(blank=True)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
     is_promoted = models.BooleanField(default=False)
@@ -91,7 +94,7 @@ class CarImage(models.Model):
         on_delete=models.CASCADE,
         related_name='images',
     )
-    image_url = models.URLField()
+    image_url = models.TextField()
     position = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 

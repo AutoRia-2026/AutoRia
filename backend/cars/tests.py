@@ -120,6 +120,15 @@ class CarFilterTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['results'][0]['model'], 'X3')
 
+    def test_filter_by_color_and_body_type(self):
+        Car.objects.filter(model='X5').update(color='White', body_type='SUV')
+
+        response = self.client.get('/api/cars/?color=White&body_type=SUV')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['model'], 'X5')
+
     def test_filter_rental_cars(self):
         Car.objects.filter(model='X3').update(is_available_for_rent=False)
 
@@ -464,6 +473,77 @@ class CarImageTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(car.images.count(), 1)
         self.assertEqual(car.images.first().image_url, 'https://example.com/new.jpg')
+
+
+class SellListingTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='sellercreate',
+            email='sellercreate@example.com',
+            password='StrongPass123',
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_authenticated_user_can_publish_listing(self):
+        response = self.client.post(
+            '/api/cars/',
+            {
+                'brand': 'BMW',
+                'model': 'X6',
+                'year': 2024,
+                'mileage': 12000,
+                'price': '78000.00',
+                'transmission': 'automatic',
+                'fuel_type': 'petrol',
+                'body_type': 'SUV',
+                'condition': 'Used-Excellent',
+                'color': 'Black',
+                'status': Car.STATUS_ACTIVE,
+                'is_available_for_rent': True,
+                'rent_price_per_day': '220.00',
+                'rent_price_per_week': '1300.00',
+                'rent_deposit': '1000.00',
+                'minimum_rent_days': 2,
+                'images': [
+                    {'image_url': 'https://example.com/x6-front.jpg', 'position': 0},
+                    {'image_url': 'https://example.com/x6-side.jpg', 'position': 1},
+                ],
+            },
+            format='json',
+        )
+
+        car = Car.objects.get(model='X6')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(car.owner, self.user)
+        self.assertEqual(car.status, Car.STATUS_ACTIVE)
+        self.assertEqual(car.body_type, 'SUV')
+        self.assertEqual(car.condition, 'Used-Excellent')
+        self.assertEqual(car.color, 'Black')
+        self.assertEqual(car.images.count(), 2)
+        self.assertEqual(response.data['effective_rent_price_per_day'], '220.00')
+
+    def test_authenticated_user_can_save_listing_draft(self):
+        response = self.client.post(
+            '/api/cars/',
+            {
+                'brand': 'Audi',
+                'model': 'A7',
+                'year': 2022,
+                'mileage': 35000,
+                'price': '55000.00',
+                'transmission': 'automatic',
+                'fuel_type': 'diesel',
+                'status': Car.STATUS_HIDDEN,
+            },
+            format='json',
+        )
+
+        car = Car.objects.get(model='A7')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(car.status, Car.STATUS_HIDDEN)
+        self.assertEqual(car.owner, self.user)
 
 
 class CarStatusTests(APITestCase):

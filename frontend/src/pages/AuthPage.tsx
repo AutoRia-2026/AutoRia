@@ -18,6 +18,7 @@ type AuthPageProps = {
   goHome: () => void
   openRent: () => void
   openBuy: () => void
+  openSell: () => void
   openError: () => void
   openAuth: () => void
   setPageProfile: () => void
@@ -51,7 +52,7 @@ function AuthPage(props: AuthPageProps) {
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Messages</button>
           <button type="button" onClick={props.openRent}>Rent</button>
           <button type="button" onClick={props.openBuy}>Buy</button>
-          <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Sell</button>
+          <button type="button" onClick={props.openSell}>Sell</button>
         </nav>
         <div className="drive-header-icons">
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Fav</button>
