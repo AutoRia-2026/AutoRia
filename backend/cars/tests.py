@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 
 from accounts.models import SellerProfile
 
-from .models import Car, CarComment, CarImage, CarLike, CarReview, SavedSearch
+from .models import Car, CarComment, CarImage, CarLike, CarReview, Conversation, Message, SavedSearch
 
 
 class CarFilterTests(APITestCase):
@@ -726,3 +726,108 @@ class CarReviewTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['car_title'], 'Porsche 911 GT3 RS 2023')
+
+
+class ConversationTests(APITestCase):
+    def setUp(self):
+        self.seller = get_user_model().objects.create_user(
+            username='messageseller',
+            email='messageseller@example.com',
+            password='StrongPass123',
+        )
+        self.buyer = get_user_model().objects.create_user(
+            username='messagebuyer',
+            email='messagebuyer@example.com',
+            password='StrongPass123',
+        )
+        self.other_user = get_user_model().objects.create_user(
+            username='messageother',
+            email='messageother@example.com',
+            password='StrongPass123',
+        )
+        self.car = Car.objects.create(
+            owner=self.seller,
+            brand='BMW',
+            model='X5',
+            year=2024,
+            mileage=9000,
+            price='72000.00',
+            transmission='automatic',
+            fuel_type='diesel',
+        )
+
+    def test_buyer_can_start_conversation_with_seller(self):
+        self.client.force_authenticate(user=self.buyer)
+
+        response = self.client.post(
+            '/api/cars/conversations/',
+            {'car': self.car.id, 'text': 'Is this BMW available?'},
+            format='json',
+        )
+
+        conversation = Conversation.objects.get()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(conversation.buyer, self.buyer)
+        self.assertEqual(conversation.seller, self.seller)
+        self.assertEqual(conversation.messages.count(), 1)
+        self.assertEqual(response.data['latest_message']['text'], 'Is this BMW available?')
+
+    def test_owner_cannot_start_conversation_with_self(self):
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.post(
+            '/api/cars/conversations/',
+            {'car': self.car.id, 'text': 'Own listing'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Conversation.objects.count(), 0)
+
+    def test_list_returns_only_user_conversations(self):
+        own_conversation = Conversation.objects.create(car=self.car, buyer=self.buyer, seller=self.seller)
+        other_car = Car.objects.create(
+            owner=self.other_user,
+            brand='Audi',
+            model='A6',
+            year=2022,
+            mileage=20000,
+            price='47000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+        Conversation.objects.create(car=other_car, buyer=self.seller, seller=self.other_user)
+        self.client.force_authenticate(user=self.buyer)
+
+        response = self.client.get('/api/cars/conversations/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['id'], own_conversation.id)
+
+    def test_participant_can_send_message(self):
+        conversation = Conversation.objects.create(car=self.car, buyer=self.buyer, seller=self.seller)
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.post(
+            f'/api/cars/conversations/{conversation.id}/messages/',
+            {'text': 'Yes, it is available.'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Message.objects.count(), 1)
+        self.assertEqual(response.data['sender'], self.seller.id)
+
+    def test_retrieve_marks_incoming_messages_as_read(self):
+        conversation = Conversation.objects.create(car=self.car, buyer=self.buyer, seller=self.seller)
+        message = Message.objects.create(conversation=conversation, sender=self.buyer, text='Hello')
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.get(f'/api/cars/conversations/{conversation.id}/')
+
+        message.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(message.is_read)

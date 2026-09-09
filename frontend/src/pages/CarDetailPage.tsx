@@ -13,6 +13,7 @@ type CarDetailPageProps = {
   setBidOpen: (value: boolean) => void
   submitComment: (event: FormEvent<HTMLFormElement>) => void
   toggleLike: (car: Car) => void
+  contactSeller: (car: Car) => void
   openCar: (car: Car) => void
   openReviews: () => void
   startReview: () => void
@@ -38,6 +39,7 @@ function CarDetailPage({
   setBidOpen,
   submitComment,
   toggleLike,
+  contactSeller,
   openCar,
   openReviews,
   startReview,
@@ -54,7 +56,7 @@ function CarDetailPage({
           <p>{car.year} / {formatMileage(car.mileage)} / {car.fuel_type} / {car.transmission}</p>
         </div>
         <div>
-          <button type="button" onClick={() => showNotice(`Seller contact: ${car.seller?.phone || car.seller?.email || 'not added yet'}`)}>
+          <button type="button" onClick={() => contactSeller(car)}>
             Contact Seller
           </button>
           <button type="button" aria-label="Like car" onClick={() => toggleLike(car)}>Heart</button>

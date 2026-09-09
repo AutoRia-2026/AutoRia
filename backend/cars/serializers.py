@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from decimal import Decimal, ROUND_HALF_UP
 
-from .models import Car, CarComment, CarImage, CarReview, SavedSearch
+from .models import Car, CarComment, CarImage, CarReview, Conversation, Message, SavedSearch
 
 
 class CarImageSerializer(serializers.ModelSerializer):
@@ -60,6 +60,78 @@ class SavedSearchSerializer(serializers.ModelSerializer):
         model = SavedSearch
         fields = ['id', 'user', 'title', 'query', 'filters', 'created_at']
         read_only_fields = ['id', 'user', 'created_at']
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = serializers.ReadOnlyField(source='sender.id')
+    sender_name = serializers.ReadOnlyField(source='sender.username')
+
+    class Meta:
+        model = Message
+        fields = ['id', 'conversation', 'sender', 'sender_name', 'text', 'is_read', 'created_at']
+        read_only_fields = ['id', 'conversation', 'sender', 'sender_name', 'is_read', 'created_at']
+
+    def validate_text(self, value):
+        if not value.strip():
+            raise serializers.ValidationError('Message cannot be empty.')
+
+        return value.strip()
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    car_title = serializers.SerializerMethodField()
+    car_image_url = serializers.ReadOnlyField(source='car.image_url')
+    buyer_name = serializers.ReadOnlyField(source='buyer.username')
+    seller_name = serializers.ReadOnlyField(source='seller.username')
+    participant_name = serializers.SerializerMethodField()
+    latest_message = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+    messages = MessageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Conversation
+        fields = [
+            'id',
+            'car',
+            'car_title',
+            'car_image_url',
+            'buyer',
+            'buyer_name',
+            'seller',
+            'seller_name',
+            'participant_name',
+            'latest_message',
+            'unread_count',
+            'messages',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_car_title(self, conversation):
+        return str(conversation.car)
+
+    def get_participant_name(self, conversation):
+        request = self.context.get('request')
+        if not request:
+            return conversation.seller.username
+
+        participant = conversation.seller if conversation.buyer_id == request.user.id else conversation.buyer
+        return participant.get_full_name() or participant.username
+
+    def get_latest_message(self, conversation):
+        message = conversation.messages.order_by('-created_at').first()
+        if message is None:
+            return None
+
+        return MessageSerializer(message).data
+
+    def get_unread_count(self, conversation):
+        request = self.context.get('request')
+        if not request:
+            return 0
+
+        return conversation.messages.exclude(sender=request.user).filter(is_read=False).count()
 
 
 class CarSerializer(serializers.ModelSerializer):

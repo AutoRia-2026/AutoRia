@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Car, CarComment, CarImage, CarLike, CarReview, SavedSearch
+from .models import Car, CarComment, CarImage, CarLike, CarReview, Conversation, Message, SavedSearch
 
 
 class CarImageInline(admin.TabularInline):
@@ -47,6 +47,27 @@ class CarCommentAdmin(admin.ModelAdmin):
     list_display = ['id', 'car', 'user', 'created_at']
     list_filter = ['created_at']
     search_fields = ['text', 'user__username', 'user__email', 'car__brand', 'car__model']
+
+
+class MessageInline(admin.TabularInline):
+    model = Message
+    extra = 0
+    readonly_fields = ['created_at']
+
+
+@admin.register(Conversation)
+class ConversationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'car', 'buyer', 'seller', 'updated_at', 'created_at']
+    list_filter = ['updated_at', 'created_at']
+    search_fields = ['car__brand', 'car__model', 'buyer__username', 'seller__username']
+    inlines = [MessageInline]
+
+
+@admin.register(Message)
+class MessageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'conversation', 'sender', 'is_read', 'created_at']
+    list_filter = ['is_read', 'created_at']
+    search_fields = ['text', 'sender__username', 'sender__email']
 
 
 @admin.register(CarReview)

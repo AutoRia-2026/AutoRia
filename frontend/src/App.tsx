@@ -13,13 +13,14 @@ import ErrorPage from './pages/ErrorPage'
 import HomePage from './pages/HomePage'
 import LeaveReviewPage from './pages/LeaveReviewPage'
 import LogoutPage from './pages/LogoutPage'
+import MessagesPage from './pages/MessagesPage'
 import ProfilePage from './pages/ProfilePage'
 import RentPage from './pages/RentPage'
 import ReviewsPage from './pages/ReviewsPage'
 import ReviewSubmittedPage from './pages/ReviewSubmittedPage'
 import SellPage from './pages/SellPage'
 import type { AuthResponse, AuthScreen, Page, ProfileSection, User } from './types/auth'
-import type { Car, CarComment, CarReview, CarsResponse, SellListingForm } from './types/cars'
+import type { Car, CarComment, CarReview, CarsResponse, Conversation, Message, SellListingForm } from './types/cars'
 import { carTitle, formatPrice } from './utils/cars'
 
 function App() {
@@ -74,6 +75,11 @@ function App() {
   const [reviewText, setReviewText] = useState('')
   const [recommendSeller, setRecommendSeller] = useState(true)
   const [isReviewSending, setIsReviewSending] = useState(false)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null)
+  const [messageText, setMessageText] = useState('')
+  const [isConversationsLoading, setIsConversationsLoading] = useState(false)
+  const [isMessageSending, setIsMessageSending] = useState(false)
 
   const [bidOpen, setBidOpen] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
@@ -290,6 +296,14 @@ function App() {
       .finally(() => setIsListingsLoading(false))
   }, [page, profileSection, refreshIndex, token])
 
+  useEffect(() => {
+    if (page !== 'messages' || !token) {
+      return
+    }
+
+    loadConversations()
+  }, [page, token])
+
   function showNotice(text: string) {
     setNotice(text)
     window.setTimeout(() => setNotice(''), 2800)
@@ -359,6 +373,17 @@ function App() {
     setPage('sell')
     setSellMessage('')
     setSellError('')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openMessages() {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    setPage('messages')
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -855,6 +880,84 @@ function App() {
     }
   }
 
+  async function loadConversations(selectedId?: number) {
+    if (!token) {
+      return
+    }
+
+    setIsConversationsLoading(true)
+    try {
+      const data = (await apiRequest('/cars/conversations/', {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      })) as Conversation[]
+
+      setConversations(data)
+      const selectedConversation = selectedId
+        ? data.find((conversation) => conversation.id === selectedId)
+        : activeConversation
+          ? data.find((conversation) => conversation.id === activeConversation.id)
+          : data[0]
+      setActiveConversation(selectedConversation || data[0] || null)
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    } finally {
+      setIsConversationsLoading(false)
+    }
+  }
+
+  async function selectConversation(conversation: Conversation) {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    try {
+      const data = (await apiRequest(`/cars/conversations/${conversation.id}/`, {
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      })) as Conversation
+
+      setActiveConversation(data)
+      setConversations((currentConversations) => currentConversations.map((item) => item.id === data.id ? data : item))
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    }
+  }
+
+  async function contactSeller(car: Car) {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    try {
+      const conversation = (await apiRequest('/cars/conversations/', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({
+          car: car.id,
+          text: `Hi, is the ${carTitle(car)} still available?`,
+        }),
+      })) as Conversation
+
+      setConversations((currentConversations) => {
+        const withoutCurrent = currentConversations.filter((item) => item.id !== conversation.id)
+        return [conversation, ...withoutCurrent]
+      })
+      setActiveConversation(conversation)
+      setMessageText('')
+      setPage('messages')
+      showNotice('Conversation started')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    }
+  }
+
   function resetSellForm() {
     setSellForm({
       brand: '',
@@ -998,6 +1101,47 @@ function App() {
       showNotice(parseApiError(requestError))
     } finally {
       setIsCommentSending(false)
+    }
+  }
+
+  async function submitMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    if (!activeConversation || !messageText.trim()) {
+      return
+    }
+
+    setIsMessageSending(true)
+    try {
+      const message = (await apiRequest(`/cars/conversations/${activeConversation.id}/messages/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({ text: messageText.trim() }),
+      })) as Message
+
+      const updatedConversation = {
+        ...activeConversation,
+        latest_message: message,
+        messages: [...activeConversation.messages, message],
+        updated_at: message.created_at,
+      }
+      setActiveConversation(updatedConversation)
+      setConversations((currentConversations) => [
+        updatedConversation,
+        ...currentConversations.filter((conversation) => conversation.id !== updatedConversation.id),
+      ])
+      setMessageText('')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    } finally {
+      setIsMessageSending(false)
     }
   }
 
@@ -1156,6 +1300,7 @@ function App() {
         openRent={openRent}
         openBuy={openBuy}
         openSell={openSell}
+        openMessages={openMessages}
         openError={() => setPage('error')}
         openAuth={() => openAuth('login')}
         setPageProfile={() => openProfile('edit')}
@@ -1171,6 +1316,7 @@ function App() {
         goHome={goHome}
         openRent={openRent}
         openSell={openSell}
+        openMessages={openMessages}
         openAuth={() => openAuth('login')}
         openProfile={openProfile}
         openError={() => setPage('error')}
@@ -1213,10 +1359,24 @@ function App() {
           setBidOpen={setBidOpen}
           submitComment={submitComment}
           toggleLike={toggleLike}
+          contactSeller={contactSeller}
           openCar={openCar}
           openReviews={openReviews}
           startReview={startReview}
           showNotice={showNotice}
+        />
+      ) : page === 'messages' && user ? (
+        <MessagesPage
+          userId={user.id}
+          conversations={conversations}
+          activeConversation={activeConversation}
+          messageText={messageText}
+          isLoading={isConversationsLoading}
+          isSending={isMessageSending}
+          setActiveConversation={selectConversation}
+          setMessageText={setMessageText}
+          submitMessage={submitMessage}
+          openBuy={openBuy}
         />
       ) : page === 'reviews' ? (
         <ReviewsPage
