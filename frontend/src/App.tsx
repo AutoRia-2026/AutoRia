@@ -14,6 +14,7 @@ import HomePage from './pages/HomePage'
 import LeaveReviewPage from './pages/LeaveReviewPage'
 import LogoutPage from './pages/LogoutPage'
 import ProfilePage from './pages/ProfilePage'
+import RentPage from './pages/RentPage'
 import ReviewsPage from './pages/ReviewsPage'
 import ReviewSubmittedPage from './pages/ReviewSubmittedPage'
 import type { AuthResponse, AuthScreen, Page, ProfileSection, User } from './types/auth'
@@ -284,6 +285,13 @@ function App() {
     setPageUrl(null)
   }
 
+  function clearCatalogFilters(targetPage: 'buy' | 'rent') {
+    resetFilters()
+    setPage(targetPage)
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function goHome() {
     resetFilters()
     setPage('home')
@@ -293,6 +301,12 @@ function App() {
 
   function openBuy() {
     setPage('buy')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openRent() {
+    setPage('rent')
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -312,35 +326,34 @@ function App() {
   function updateSearch(value: string) {
     setSearch(value)
     setPageUrl(null)
-    setPage('buy')
+    setPage((currentPage) => currentPage === 'rent' ? 'rent' : 'buy')
     setNotice('')
   }
 
   function updateBrand(value: string) {
     setBrand(value)
     setPageUrl(null)
-    setPage('buy')
+    setPage((currentPage) => currentPage === 'rent' ? 'rent' : 'buy')
     setNotice('')
   }
 
   function updateModel(value: string) {
     setModelFilter(value)
     setPageUrl(null)
-    setPage('buy')
+    setPage((currentPage) => currentPage === 'rent' ? 'rent' : 'buy')
     setNotice('')
   }
 
   function updateFuel(value: string) {
     setFuelType(value)
     setPageUrl(null)
-    setPage('buy')
+    setPage((currentPage) => currentPage === 'rent' ? 'rent' : 'buy')
     setNotice('')
   }
 
   function updateOrdering(value: string) {
     setOrdering(value)
     setPageUrl(null)
-    setPage('home')
     setNotice('')
   }
 
@@ -360,10 +373,10 @@ function App() {
     setPageUrl(null)
   }
 
-  function applyBuyTab(tab: string) {
+  function applyBuyTab(tab: string, targetPage: 'buy' | 'rent' = 'buy') {
     setActiveBuyTab(tab)
     setPageUrl(null)
-    setPage('buy')
+    setPage(targetPage)
 
     if (tab === 'All cars') {
       setYearMin('2015')
@@ -987,6 +1000,7 @@ function App() {
         {...authProps}
         user={user}
         goHome={goHome}
+        openRent={openRent}
         openBuy={openBuy}
         openError={() => setPage('error')}
         openAuth={() => openAuth('login')}
@@ -1001,10 +1015,10 @@ function App() {
       <Header
         user={user}
         goHome={goHome}
+        openRent={openRent}
         openAuth={() => openAuth('login')}
         openProfile={openProfile}
         openError={() => setPage('error')}
-        showNotice={showNotice}
         applyBuyTab={applyBuyTab}
         openProtectedPage={openProtectedPage}
       />
@@ -1055,7 +1069,7 @@ function App() {
           reviews={reviews}
           isLoading={isReviewsLoading}
           startReview={startReview}
-          goHome={goHome}
+          goHome={() => clearCatalogFilters('buy')}
         />
       ) : page === 'review-form' ? (
         <LeaveReviewPage
@@ -1094,7 +1108,7 @@ function App() {
           carsError={carsError}
           previousPage={previousPage}
           nextPage={nextPage}
-          goHome={goHome}
+          goHome={() => clearCatalogFilters('rent')}
           saveSearch={saveSearch}
           updateSearch={updateSearch}
           updateBrand={updateBrand}
@@ -1106,6 +1120,43 @@ function App() {
           setColorFilter={setColorFilter}
           updateOrdering={updateOrdering}
           applyBuyTab={applyBuyTab}
+          setPageUrl={setPageUrl}
+          showNotice={showNotice}
+          openCar={openCar}
+          toggleLike={toggleLike}
+        />
+      ) : page === 'rent' ? (
+        <RentPage
+          cars={visibleCars}
+          carsCount={carsCount}
+          models={models}
+          search={search}
+          brand={brand}
+          modelFilter={modelFilter}
+          fuelType={fuelType}
+          priceMax={priceMax}
+          yearMin={yearMin}
+          yearMax={yearMax}
+          mileageMax={mileageMax}
+          colorFilter={colorFilter}
+          ordering={ordering}
+          activeBuyTab={activeBuyTab}
+          isCarsLoading={isCarsLoading}
+          carsError={carsError}
+          previousPage={previousPage}
+          nextPage={nextPage}
+          goHome={goHome}
+          saveSearch={saveSearch}
+          updateSearch={updateSearch}
+          updateBrand={updateBrand}
+          updateModel={updateModel}
+          updateFuel={updateFuel}
+          updatePriceMax={updatePriceMax}
+          updateYearRange={updateYearRange}
+          updateMileage={updateMileage}
+          setColorFilter={setColorFilter}
+          updateOrdering={updateOrdering}
+          applyBuyTab={(tab) => applyBuyTab(tab, 'rent')}
           setPageUrl={setPageUrl}
           showNotice={showNotice}
           openCar={openCar}

@@ -3,14 +3,17 @@ import { carTitle, fallbackImage, formatMileage, formatPrice } from '../utils/ca
 
 type BuyCarCardProps = {
   car: Car
+  mode?: 'buy' | 'rent'
   openCar: (car: Car) => void
   toggleLike: (car: Car) => void
 }
 
-function BuyCarCard({ car, openCar, toggleLike }: BuyCarCardProps) {
+function BuyCarCard({ car, mode = 'buy', openCar, toggleLike }: BuyCarCardProps) {
   const priceNumber = Number(car.price)
   const oldPrice = Math.round(priceNumber * 1.12)
+  const dailyPrice = Math.max(35, Math.round(priceNumber * 0.004))
   const badge = priceNumber < 30000 ? 'Good price' : priceNumber > 70000 ? 'Great price' : 'Fair price'
+  const displayPrice = mode === 'rent' ? `$${dailyPrice}/day` : formatPrice(car.price)
 
   return (
     <article className="buy-car-card">
@@ -28,7 +31,7 @@ function BuyCarCard({ car, openCar, toggleLike }: BuyCarCardProps) {
           <button type="button" onClick={() => openCar(car)}>{carTitle(car)}</button>
           <span>{badge}</span>
         </div>
-        <strong>{formatPrice(car.price)}</strong>
+        <strong>{displayPrice}</strong>
         <div className="buy-card-meta">
           <span>{formatMileage(car.mileage)}</span>
           <span>{car.transmission}</span>
@@ -37,7 +40,7 @@ function BuyCarCard({ car, openCar, toggleLike }: BuyCarCardProps) {
         </div>
         <div className="buy-card-footer">
           <span>{car.seller?.city || 'London, UK'}</span>
-          <span>{oldPrice > priceNumber ? `${formatPrice(String(oldPrice))} old` : 'Just now'}</span>
+          <span>{mode === 'rent' ? 'Insurance ready' : oldPrice > priceNumber ? `${formatPrice(String(oldPrice))} old` : 'Just now'}</span>
         </div>
       </div>
     </article>

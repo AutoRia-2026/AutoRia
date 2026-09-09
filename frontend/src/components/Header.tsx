@@ -4,10 +4,10 @@ import DriveHubLogo from './DriveHubLogo'
 type HeaderProps = {
   user: User | null
   goHome: () => void
+  openRent: () => void
   openAuth: () => void
   openProfile: (section?: ProfileSection) => void
   openError: () => void
-  showNotice: (message: string) => void
   applyBuyTab: (tab: string) => void
   openProtectedPage: (page: Page, message?: string) => void
 }
@@ -15,10 +15,10 @@ type HeaderProps = {
 function Header({
   user,
   goHome,
+  openRent,
   openAuth,
   openProfile,
   openError,
-  showNotice,
   applyBuyTab,
   openProtectedPage,
 }: HeaderProps) {
@@ -29,7 +29,7 @@ function Header({
         <button type="button" onClick={goHome}>Home</button>
         <button type="button" onClick={() => user ? openProfile('edit') : openAuth()}>Profile</button>
         <button type="button" onClick={() => user ? openProfile('notifications') : openAuth()}>Messages</button>
-        <button type="button" onClick={() => showNotice('Rent page will be added later')}>Rent</button>
+        <button type="button" onClick={openRent}>Rent</button>
         <button type="button" onClick={() => applyBuyTab('All cars')}>Buy</button>
         <button type="button" onClick={() => openProtectedPage('profile', 'Car submission page will be added later')}>Sell</button>
       </nav>

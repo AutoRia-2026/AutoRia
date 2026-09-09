@@ -16,6 +16,7 @@ type AuthPageProps = {
   error: string
   isAuthLoading: boolean
   goHome: () => void
+  openRent: () => void
   openBuy: () => void
   openError: () => void
   openAuth: () => void
@@ -48,7 +49,7 @@ function AuthPage(props: AuthPageProps) {
           <button type="button" onClick={props.goHome}>Home</button>
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Profile</button>
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Messages</button>
-          <button type="button" onClick={() => props.showNotice('Rent page will be added later')}>Rent</button>
+          <button type="button" onClick={props.openRent}>Rent</button>
           <button type="button" onClick={props.openBuy}>Buy</button>
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Sell</button>
         </nav>
