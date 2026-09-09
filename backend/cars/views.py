@@ -38,6 +38,8 @@ class CarViewSet(viewsets.ModelViewSet):
         mileage_min = params.get('mileage_min')
         mileage_max = params.get('mileage_max')
         rental = params.get('rental')
+        color = params.get('color')
+        body_type = params.get('body_type')
         search = params.get('search')
         ordering = params.get('ordering')
         car_status = params.get('status')
@@ -72,6 +74,12 @@ class CarViewSet(viewsets.ModelViewSet):
         if rental in {'true', '1', 'yes'}:
             queryset = queryset.filter(is_available_for_rent=True)
 
+        if color:
+            queryset = queryset.filter(color__iexact=color)
+
+        if body_type:
+            queryset = queryset.filter(body_type__iexact=body_type)
+
         if car_status in {Car.STATUS_ACTIVE, Car.STATUS_SOLD, Car.STATUS_HIDDEN}:
             queryset = queryset.filter(status=car_status)
 
@@ -81,6 +89,9 @@ class CarViewSet(viewsets.ModelViewSet):
                     Q(brand__icontains=term)
                     | Q(model__icontains=term)
                     | Q(description__icontains=term)
+                    | Q(body_type__icontains=term)
+                    | Q(condition__icontains=term)
+                    | Q(color__icontains=term)
                 )
 
                 if term.isdigit():

@@ -1,26 +1,26 @@
-import type { Page, ProfileSection, User } from '../types/auth'
+import type { ProfileSection, User } from '../types/auth'
 import DriveHubLogo from './DriveHubLogo'
 
 type HeaderProps = {
   user: User | null
   goHome: () => void
   openRent: () => void
+  openSell: () => void
   openAuth: () => void
   openProfile: (section?: ProfileSection) => void
   openError: () => void
   applyBuyTab: (tab: string) => void
-  openProtectedPage: (page: Page, message?: string) => void
 }
 
 function Header({
   user,
   goHome,
   openRent,
+  openSell,
   openAuth,
   openProfile,
   openError,
   applyBuyTab,
-  openProtectedPage,
 }: HeaderProps) {
   return (
     <header className="buy-header">
@@ -31,7 +31,7 @@ function Header({
         <button type="button" onClick={() => user ? openProfile('notifications') : openAuth()}>Messages</button>
         <button type="button" onClick={openRent}>Rent</button>
         <button type="button" onClick={() => applyBuyTab('All cars')}>Buy</button>
-        <button type="button" onClick={() => openProtectedPage('profile', 'Car submission page will be added later')}>Sell</button>
+        <button type="button" onClick={openSell}>Sell</button>
       </nav>
       <div className="buy-header-actions">
         <button type="button" onClick={() => user ? openProfile('favorites') : openAuth()} aria-label="Favorites">Fav</button>

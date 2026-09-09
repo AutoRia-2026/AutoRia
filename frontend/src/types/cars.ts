@@ -51,6 +51,9 @@ export type Car = {
   effective_rent_price_per_day: string
   transmission: string
   fuel_type: string
+  body_type: string
+  condition: string
+  color: string
   image_url: string
   description: string
   status: string
@@ -70,4 +73,28 @@ export type CarsResponse = {
   next: string | null
   previous: string | null
   results: Car[]
+}
+
+export type SellListingForm = {
+  brand: string
+  model: string
+  year: string
+  body_type: string
+  fuel_type: string
+  transmission: string
+  mileage: string
+  condition: string
+  color: string
+  description: string
+  price: string
+  phone: string
+  full_name: string
+  city: string
+  email: string
+  is_available_for_rent: boolean
+  rent_price_per_day: string
+  rent_price_per_week: string
+  rent_deposit: string
+  minimum_rent_days: string
+  images: string[]
 }
