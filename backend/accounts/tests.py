@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.test import APITestCase
@@ -124,3 +127,46 @@ class AccountVerificationTests(APITestCase):
         self.assertEqual(user.last_name, 'Seller')
         self.assertEqual(profile.phone, '+380671112233')
         self.assertEqual(profile.city, 'Lviv')
+
+    def test_social_auth_requires_access_token(self):
+        response = self.client.post(
+            '/api/auth/social/',
+            {'provider': 'google'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('access_token', response.data)
+
+    @override_settings(GOOGLE_OAUTH_CLIENT_ID='')
+    def test_social_auth_requires_provider_configuration(self):
+        response = self.client.post(
+            '/api/auth/social/',
+            {'provider': 'google', 'access_token': 'token'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 503)
+
+    @override_settings(GOOGLE_OAUTH_CLIENT_ID='google-client-id')
+    @patch('accounts.views.verify_google_access_token')
+    def test_social_auth_creates_active_user_from_verified_token(self, verify_google_access_token):
+        verify_google_access_token.return_value = {
+            'email': 'real.google@example.com',
+            'name': 'Real Google User',
+        }
+
+        response = self.client.post(
+            '/api/auth/social/',
+            {'provider': 'google', 'access_token': 'verified-token'},
+            format='json',
+        )
+
+        user = get_user_model().objects.get(email='real.google@example.com')
+
+        verify_google_access_token.assert_called_once_with('verified-token')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(user.is_active)
+        self.assertTrue(user.has_usable_password() is False)
+        self.assertIn('token', response.data)
+        self.assertTrue(SellerProfile.objects.filter(user=user).exists())

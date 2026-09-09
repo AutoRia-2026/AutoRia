@@ -7,6 +7,7 @@ from .views import (
     MeView,
     RegisterView,
     ResetPasswordView,
+    SocialAuthView,
     VerifyEmailView,
 )
 
@@ -19,4 +20,5 @@ urlpatterns = [
     path('me/', MeView.as_view(), name='me'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),
+    path('social/', SocialAuthView.as_view(), name='social-auth'),
 ]

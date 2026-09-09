@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 
 from accounts.models import SellerProfile
 
-from .models import Car, CarComment, CarImage, CarLike
+from .models import Car, CarComment, CarImage, CarLike, CarReview, SavedSearch
 
 
 class CarFilterTests(APITestCase):
@@ -59,6 +59,13 @@ class CarFilterTests(APITestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['fuel_type'], 'diesel')
 
+    def test_filter_by_model_name(self):
+        response = self.client.get('/api/cars/?model=X3')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['model'], 'X3')
+
     def test_filter_by_price_range(self):
         response = self.client.get('/api/cars/?price_min=30000&price_max=40000')
 
@@ -68,6 +75,12 @@ class CarFilterTests(APITestCase):
 
     def test_filter_by_year_range(self):
         response = self.client.get('/api/cars/?year_min=2020&year_max=2022')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 2)
+
+    def test_filter_by_mileage_range(self):
+        response = self.client.get('/api/cars/?mileage_min=30000&mileage_max=60000')
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 2)
@@ -193,6 +206,26 @@ class CarLikeTests(APITestCase):
         self.assertFalse(response.data['liked'])
         self.assertEqual(CarLike.objects.count(), 0)
 
+    def test_favorites_endpoint_returns_liked_cars(self):
+        other_car = Car.objects.create(
+            owner=self.user,
+            brand='Audi',
+            model='A6',
+            year=2019,
+            mileage=50000,
+            price='26000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+        CarLike.objects.create(user=self.user, car=other_car)
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get('/api/cars/favorites/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['brand'], 'Audi')
+
 
 class CarDetailTests(APITestCase):
     def test_detail_page_increments_views_count(self):
@@ -290,6 +323,54 @@ class MyCarsTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['status'], Car.STATUS_HIDDEN)
+
+    def test_owner_can_promote_listing(self):
+        user = get_user_model().objects.create_user(
+            username='promoteuser',
+            email='promote@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+
+        self.client.force_authenticate(user=user)
+        response = self.client.post(f'/api/cars/{car.id}/promote/')
+
+        car.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(car.is_promoted)
+        self.assertTrue(response.data['is_promoted'])
+
+    def test_user_can_save_search(self):
+        user = get_user_model().objects.create_user(
+            username='savedsearchuser',
+            email='savedsearch@example.com',
+            password='StrongPass123',
+        )
+
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            '/api/cars/saved-searches/',
+            {
+                'title': 'BMW petrol',
+                'query': 'BMW',
+                'filters': {'fuel_type': 'petrol', 'price_max': '30000'},
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(SavedSearch.objects.count(), 1)
+        self.assertEqual(response.data['title'], 'BMW petrol')
 
 
 class CarImageTests(APITestCase):
@@ -474,3 +555,67 @@ class CarCommentTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['comments']), 1)
         self.assertEqual(response.data['comments'][0]['text'], 'Clean title?')
+
+
+class CarReviewTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='reviewuser',
+            email='review@example.com',
+            password='StrongPass123',
+        )
+        self.car = Car.objects.create(
+            owner=self.user,
+            brand='Porsche',
+            model='911 GT3 RS',
+            year=2023,
+            mileage=2500,
+            price='385000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+        )
+
+    def test_authenticated_user_can_create_review(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            f'/api/cars/{self.car.id}/reviews/',
+            {'rating': 5, 'text': 'Great seller and clean car.', 'recommend_seller': True},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CarReview.objects.count(), 1)
+        self.assertEqual(response.data['rating'], 5)
+
+    def test_user_cannot_review_same_car_twice(self):
+        self.client.force_authenticate(user=self.user)
+        CarReview.objects.create(
+            car=self.car,
+            user=self.user,
+            rating=5,
+            text='First review.',
+        )
+
+        response = self.client.post(
+            f'/api/cars/{self.car.id}/reviews/',
+            {'rating': 4, 'text': 'Second review.', 'recommend_seller': True},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(CarReview.objects.count(), 1)
+
+    def test_public_reviews_endpoint_returns_reviews(self):
+        CarReview.objects.create(
+            car=self.car,
+            user=self.user,
+            rating=5,
+            text='Verified purchase.',
+        )
+
+        response = self.client.get('/api/cars/reviews/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['car_title'], 'Porsche 911 GT3 RS 2023')
