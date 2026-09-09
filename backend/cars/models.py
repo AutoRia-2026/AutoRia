@@ -45,6 +45,8 @@ class Car(models.Model):
     image_url = models.URLField(blank=True)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
+    is_promoted = models.BooleanField(default=False)
+    promoted_at = models.DateTimeField(null=True, blank=True)
     views_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -117,3 +119,47 @@ class CarComment(models.Model):
 
     def __str__(self):
         return f'{self.user_id} comment on {self.car_id}'
+
+
+class CarReview(models.Model):
+    car = models.ForeignKey(
+        Car,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='car_reviews',
+    )
+    rating = models.PositiveSmallIntegerField()
+    text = models.TextField(max_length=1000)
+    recommend_seller = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'car'], name='unique_user_car_review'),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} review on {self.car_id}'
+
+
+class SavedSearch(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='saved_searches',
+    )
+    title = models.CharField(max_length=120)
+    query = models.CharField(max_length=255, blank=True)
+    filters = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user_id}: {self.title}'

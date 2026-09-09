@@ -2,157 +2,28 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
-const API_URL = 'http://127.0.0.1:8000/api'
-const TOKEN_KEY = 'autoria_token'
-const REMEMBER_KEY = 'autoria_remember'
-
-type Page = 'auth' | 'home' | 'search' | 'detail' | 'profile'
-type AuthScreen =
-  | 'login'
-  | 'signup-info'
-  | 'signup-password'
-  | 'signup-code'
-  | 'forgot'
-  | 'reset-code'
-  | 'reset-password'
-  | 'check-email'
-
-type User = {
-  id: number
-  username: string
-  email: string
-  first_name: string
-  last_name: string
-  seller_profile?: {
-    phone: string
-    city: string
-  } | null
-}
-
-type AuthResponse = {
-  token: string
-  user: User
-}
-
-type Car = {
-  id: number
-  owner: number | null
-  seller?: {
-    id: number
-    username: string
-    email: string
-    first_name: string
-    last_name: string
-    phone: string
-    city: string
-  } | null
-  brand: string
-  model: string
-  year: number
-  mileage: number
-  price: string
-  transmission: string
-  fuel_type: string
-  image_url: string
-  description: string
-  status: string
-  views_count: number
-  likes_count: number
-  images?: CarImage[]
-  comments?: CarComment[]
-  created_at: string
-}
-
-type CarImage = {
-  id: number
-  image_url: string
-  position: number
-  created_at: string
-}
-
-type CarComment = {
-  id: number
-  user: number
-  username: string
-  text: string
-  created_at: string
-}
-
-type CarsResponse = {
-  count: number
-  next: string | null
-  previous: string | null
-  results: Car[]
-}
-
-type ApiError = Record<string, string[] | string>
-
-const heroImages = [
-  'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1494905998402-395d579af36f?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80',
-]
-
-function parseApiError(error: unknown) {
-  if (!error || typeof error !== 'object') {
-    return 'Request failed'
-  }
-
-  const data = error as ApiError
-
-  if (data.non_field_errors) {
-    return Array.isArray(data.non_field_errors)
-      ? data.non_field_errors.join(' ')
-      : data.non_field_errors
-  }
-
-  const key = Object.keys(data)[0]
-  const value = data[key]
-
-  if (Array.isArray(value)) {
-    return value.join(' ')
-  }
-
-  return value || 'Check entered data'
-}
-
-async function apiRequest(path: string, options: RequestInit = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  })
-  const data = response.status === 204 ? null : await response.json()
-
-  if (!response.ok) {
-    throw data
-  }
-
-  return data
-}
-
-function formatPrice(price: string) {
-  return `$${Math.round(Number(price)).toLocaleString('en-US')}`
-}
-
-function formatMileage(mileage: number) {
-  return `${mileage.toLocaleString('en-US')} mi`
-}
-
-function carTitle(car: Car) {
-  return `${car.year} ${car.brand} ${car.model}`
-}
-
-function fallbackImage(car: Car) {
-  return car.image_url || heroImages[car.id % heroImages.length]
-}
+import { API_URL, REMEMBER_KEY, TOKEN_KEY, apiRequest, parseApiError } from './api/client'
+import AuthCard from './components/AuthCard'
+import Footer from './components/Footer'
+import Header from './components/Header'
+import AuthPage from './pages/AuthPage'
+import BuyPage from './pages/BuyPage'
+import CarDetailPage from './pages/CarDetailPage'
+import ErrorPage from './pages/ErrorPage'
+import HomePage from './pages/HomePage'
+import LeaveReviewPage from './pages/LeaveReviewPage'
+import LogoutPage from './pages/LogoutPage'
+import ProfilePage from './pages/ProfilePage'
+import ReviewsPage from './pages/ReviewsPage'
+import ReviewSubmittedPage from './pages/ReviewSubmittedPage'
+import type { AuthResponse, AuthScreen, Page, ProfileSection, User } from './types/auth'
+import type { Car, CarComment, CarReview, CarsResponse } from './types/cars'
+import { carTitle, formatPrice } from './utils/cars'
 
 function App() {
   const rememberedToken =
     localStorage.getItem(REMEMBER_KEY) === 'true' ? localStorage.getItem(TOKEN_KEY) || '' : ''
+
   const [page, setPage] = useState<Page>(rememberedToken ? 'home' : 'auth')
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
   const [authScreen, setAuthScreen] = useState<AuthScreen>('login')
@@ -168,6 +39,7 @@ function App() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isAuthLoading, setIsAuthLoading] = useState(false)
+
   const [cars, setCars] = useState<Car[]>([])
   const [carsCount, setCarsCount] = useState(0)
   const [nextPage, setNextPage] = useState<string | null>(null)
@@ -176,12 +48,31 @@ function App() {
   const [isCarsLoading, setIsCarsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [brand, setBrand] = useState('')
+  const [modelFilter, setModelFilter] = useState('')
   const [fuelType, setFuelType] = useState('')
+  const [priceMax, setPriceMax] = useState('200000')
+  const [yearMin, setYearMin] = useState('2015')
+  const [yearMax, setYearMax] = useState('2024')
+  const [mileageMax, setMileageMax] = useState('')
+  const [colorFilter, setColorFilter] = useState('')
   const [ordering, setOrdering] = useState('-created_at')
   const [activeFilter, setActiveFilter] = useState('ending')
+  const [activeBuyTab, setActiveBuyTab] = useState('All cars')
   const [pageUrl, setPageUrl] = useState<string | null>(null)
   const [refreshIndex, setRefreshIndex] = useState(0)
   const [notice, setNotice] = useState('')
+  const [profileSection, setProfileSection] = useState<ProfileSection>('edit')
+  const [favoriteCars, setFavoriteCars] = useState<Car[]>([])
+  const [isFavoritesLoading, setIsFavoritesLoading] = useState(false)
+  const [myListings, setMyListings] = useState<Car[]>([])
+  const [isListingsLoading, setIsListingsLoading] = useState(false)
+  const [reviews, setReviews] = useState<CarReview[]>([])
+  const [isReviewsLoading, setIsReviewsLoading] = useState(false)
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewText, setReviewText] = useState('')
+  const [recommendSeller, setRecommendSeller] = useState(true)
+  const [isReviewSending, setIsReviewSending] = useState(false)
+
   const [bidOpen, setBidOpen] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
   const [bidMessage, setBidMessage] = useState('')
@@ -194,20 +85,25 @@ function App() {
     last_name: '',
     phone: '',
     city: '',
+    date_of_birth: '',
+    country: '',
+    street_address: '',
+    state_province: '',
   })
   const [profileMessage, setProfileMessage] = useState('')
   const [profileError, setProfileError] = useState('')
   const [isProfileSaving, setIsProfileSaving] = useState(false)
 
-  const brands = useMemo(
-    () => Array.from(new Set(cars.map((car) => car.brand))).sort(),
+  const models = useMemo(
+    () => Array.from(new Set(cars.map((car) => car.model))).sort(),
     [cars],
   )
+
   const relatedCars = useMemo(
     () => cars.filter((car) => car.id !== selectedCar?.id).slice(0, 6),
     [cars, selectedCar],
   )
-  const searchHeading = search.trim() || brand || 'Cars'
+
   const visibleCars = useMemo(() => {
     if (activeFilter === 'watched') {
       return [...cars].sort((firstCar, secondCar) => secondCar.likes_count - firstCar.likes_count)
@@ -243,6 +139,19 @@ function App() {
   }, [token])
 
   useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const accessToken = hashParams.get('access_token')
+    const provider = hashParams.get('state')
+
+    if (!accessToken || (provider !== 'google' && provider !== 'facebook')) {
+      return
+    }
+
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    void completeSocialAuth(provider, accessToken)
+  }, [])
+
+  useEffect(() => {
     if (!user) {
       return
     }
@@ -254,6 +163,10 @@ function App() {
       last_name: user.last_name || '',
       phone: user.seller_profile?.phone || '',
       city: user.seller_profile?.city || '',
+      date_of_birth: user.seller_profile?.date_of_birth || '',
+      country: user.seller_profile?.country || '',
+      street_address: user.seller_profile?.street_address || '',
+      state_province: user.seller_profile?.state_province || '',
     })
   }, [user])
 
@@ -261,21 +174,15 @@ function App() {
     const controller = new AbortController()
     const params = new URLSearchParams()
 
-    if (search.trim()) {
-      params.set('search', search.trim())
-    }
-
-    if (brand) {
-      params.set('brand', brand)
-    }
-
-    if (fuelType) {
-      params.set('fuel_type', fuelType)
-    }
-
-    if (ordering) {
-      params.set('ordering', ordering)
-    }
+    if (search.trim()) params.set('search', search.trim())
+    if (brand) params.set('brand', brand)
+    if (modelFilter) params.set('model', modelFilter)
+    if (fuelType) params.set('fuel_type', fuelType)
+    if (priceMax) params.set('price_max', priceMax)
+    if (yearMin) params.set('year_min', yearMin)
+    if (yearMax) params.set('year_max', yearMax)
+    if (mileageMax) params.set('mileage_max', mileageMax)
+    if (ordering) params.set('ordering', ordering)
 
     const url = pageUrl || `${API_URL}/cars/?${params.toString()}`
 
@@ -284,10 +191,7 @@ function App() {
 
     fetch(url, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) {
-          throw await response.json()
-        }
-
+        if (!response.ok) throw await response.json()
         return response.json()
       })
       .then((data: CarsResponse) => {
@@ -297,84 +201,227 @@ function App() {
         setPreviousPage(data.previous)
       })
       .catch((requestError) => {
-        if (requestError.name !== 'AbortError') {
-          setCarsError('Cars could not be loaded')
-        }
+        if (requestError.name !== 'AbortError') setCarsError('Cars could not be loaded')
       })
       .finally(() => setIsCarsLoading(false))
 
     return () => controller.abort()
-  }, [brand, fuelType, ordering, pageUrl, refreshIndex, search])
+  }, [brand, fuelType, mileageMax, modelFilter, ordering, pageUrl, priceMax, refreshIndex, search, yearMax, yearMin])
 
-  function updateSearch(value: string) {
-    setSearch(value)
-    setPageUrl(null)
-    setPage(value.trim() ? 'search' : 'home')
-    setNotice('')
-  }
+  useEffect(() => {
+    if (page !== 'reviews') {
+      return
+    }
 
-  function updateBrand(value: string) {
-    setBrand(value)
-    setPageUrl(null)
-    setPage(value ? 'search' : page)
-    setNotice('')
-  }
+    setIsReviewsLoading(true)
+    apiRequest('/cars/reviews/')
+      .then((data) => setReviews(data as CarReview[]))
+      .catch(() => showNotice('Reviews could not be loaded'))
+      .finally(() => setIsReviewsLoading(false))
+  }, [page])
 
-  function updateFuel(value: string) {
-    setFuelType(value)
-    setPageUrl(null)
-    setPage('search')
-    setNotice('')
-  }
+  useEffect(() => {
+    if (page !== 'profile' || profileSection !== 'favorites' || !token) {
+      return
+    }
 
-  function updateOrdering(value: string) {
-    setOrdering(value)
-    setPageUrl(null)
-    setPage('search')
-    setNotice('')
-  }
+    setIsFavoritesLoading(true)
+    apiRequest('/cars/favorites/', {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    })
+      .then((data) => setFavoriteCars((data as CarsResponse).results))
+      .catch(() => showNotice('Favorites could not be loaded'))
+      .finally(() => setIsFavoritesLoading(false))
+  }, [page, profileSection, refreshIndex, token])
 
-  function goHome() {
-    setPage('home')
-    setSearch('')
-    setBrand('')
-    setFuelType('')
-    setOrdering('-created_at')
-    setActiveFilter('ending')
-    setPageUrl(null)
-    setNotice('')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  useEffect(() => {
+    if (page !== 'profile' || profileSection !== 'listings' || !token) {
+      return
+    }
+
+    setIsListingsLoading(true)
+    apiRequest('/cars/my/', {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    })
+      .then((data) => setMyListings((data as CarsResponse).results))
+      .catch(() => showNotice('Listings could not be loaded'))
+      .finally(() => setIsListingsLoading(false))
+  }, [page, profileSection, refreshIndex, token])
 
   function showNotice(text: string) {
     setNotice(text)
     window.setTimeout(() => setNotice(''), 2800)
   }
 
-  function applyQuickFilter(filter: string) {
-    setActiveFilter(filter)
-    setPageUrl(null)
-    setPage('search')
-
-    if (filter === 'ending') {
-      setOrdering('-created_at')
-    }
-
-    if (filter === 'new') {
-      setOrdering('-year')
-    }
-
-    if (filter === 'watched') {
-      showNotice('Showing cars with the most watchers first')
-    }
+  function changeAuthScreen(nextScreen: AuthScreen) {
+    setAuthScreen(nextScreen)
+    setError('')
+    setMessage('')
   }
 
-  function saveSearch() {
-    localStorage.setItem(
-      'autoria_saved_search',
-      JSON.stringify({ search, brand, fuelType, ordering, activeFilter }),
-    )
-    showNotice('Search saved')
+  function openAuth(screen: AuthScreen = 'login') {
+    setAuthOpen(true)
+    changeAuthScreen(screen)
+  }
+
+  function resetFilters() {
+    setSearch('')
+    setBrand('')
+    setModelFilter('')
+    setFuelType('')
+    setPriceMax('200000')
+    setYearMin('2015')
+    setYearMax('2024')
+    setMileageMax('')
+    setColorFilter('')
+    setOrdering('-created_at')
+    setActiveFilter('ending')
+    setActiveBuyTab('All cars')
+    setPageUrl(null)
+  }
+
+  function goHome() {
+    resetFilters()
+    setPage('home')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openBuy() {
+    setPage('buy')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openProfile(section: ProfileSection = 'edit') {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    setProfileSection(section)
+    setPage('profile')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function updateSearch(value: string) {
+    setSearch(value)
+    setPageUrl(null)
+    setPage('buy')
+    setNotice('')
+  }
+
+  function updateBrand(value: string) {
+    setBrand(value)
+    setPageUrl(null)
+    setPage('buy')
+    setNotice('')
+  }
+
+  function updateModel(value: string) {
+    setModelFilter(value)
+    setPageUrl(null)
+    setPage('buy')
+    setNotice('')
+  }
+
+  function updateFuel(value: string) {
+    setFuelType(value)
+    setPageUrl(null)
+    setPage('buy')
+    setNotice('')
+  }
+
+  function updateOrdering(value: string) {
+    setOrdering(value)
+    setPageUrl(null)
+    setPage('home')
+    setNotice('')
+  }
+
+  function updatePriceMax(value: string) {
+    setPriceMax(value)
+    setPageUrl(null)
+  }
+
+  function updateYearRange(nextMin: string, nextMax: string) {
+    setYearMin(nextMin)
+    setYearMax(nextMax)
+    setPageUrl(null)
+  }
+
+  function updateMileage(value: string) {
+    setMileageMax(value)
+    setPageUrl(null)
+  }
+
+  function applyBuyTab(tab: string) {
+    setActiveBuyTab(tab)
+    setPageUrl(null)
+    setPage('buy')
+
+    if (tab === 'All cars') {
+      setYearMin('2015')
+      setYearMax('2024')
+      setPriceMax('200000')
+      setOrdering('-created_at')
+      return
+    }
+
+    if (tab === 'New cars') {
+      setYearMin('2021')
+      setYearMax('2024')
+      setOrdering('-year')
+      return
+    }
+
+    if (tab === 'Used cars') {
+      setYearMin('2015')
+      setYearMax('2020')
+      setOrdering('price')
+      return
+    }
+
+    if (tab === 'Deals') {
+      setPriceMax('30000')
+      setOrdering('price')
+      return
+    }
+
+    showNotice(`${tab} filter will be connected when this backend field is added`)
+  }
+
+  async function saveSearch() {
+    const filters = { brand, modelFilter, fuelType, priceMax, yearMin, yearMax, mileageMax, ordering, activeFilter }
+
+    localStorage.setItem('autoria_saved_search', JSON.stringify({ search, ...filters }))
+
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    try {
+      await apiRequest('/cars/saved-searches/', {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({
+          title: search || brand || modelFilter || 'Saved car search',
+          query: search,
+          filters,
+        }),
+      })
+      showNotice('Search saved')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    }
   }
 
   function openProtectedPage(nextPage: Page, fallbackMessage = 'Please sign in first') {
@@ -384,9 +431,7 @@ function App() {
     }
 
     setPage(nextPage)
-    if (fallbackMessage) {
-      showNotice(fallbackMessage)
-    }
+    if (fallbackMessage) showNotice(fallbackMessage)
   }
 
   async function openCar(car: Car) {
@@ -404,15 +449,27 @@ function App() {
     }
   }
 
-  function changeAuthScreen(nextScreen: AuthScreen) {
-    setAuthScreen(nextScreen)
-    setError('')
-    setMessage('')
+  function openReviews() {
+    setPage('reviews')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  function openAuth(screen: AuthScreen = 'login') {
-    setAuthOpen(true)
-    changeAuthScreen(screen)
+  function startReview() {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    if (!selectedCar && cars[0]) {
+      setSelectedCar(cars[0])
+    }
+
+    setReviewRating(0)
+    setReviewText('')
+    setRecommendSeller(true)
+    setPage('review-form')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
@@ -433,6 +490,7 @@ function App() {
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(REMEMBER_KEY)
       }
+
       setToken(data.token)
       setUser(data.user)
       setPassword('')
@@ -443,6 +501,65 @@ function App() {
     } finally {
       setIsAuthLoading(false)
     }
+  }
+
+  async function completeSocialAuth(provider: 'google' | 'facebook', accessToken: string) {
+    setError('')
+    setIsAuthLoading(true)
+
+    try {
+      const data = (await apiRequest('/auth/social/', {
+        method: 'POST',
+        body: JSON.stringify({ provider, access_token: accessToken }),
+      })) as AuthResponse
+
+      localStorage.setItem(TOKEN_KEY, data.token)
+      localStorage.setItem(REMEMBER_KEY, 'true')
+      setRememberMe(true)
+      setToken(data.token)
+      setUser(data.user)
+      setAuthOpen(false)
+      setPage('home')
+      showNotice(`${provider === 'google' ? 'Google' : 'Facebook'} account connected`)
+    } catch (requestError) {
+      setError(parseApiError(requestError))
+    } finally {
+      setIsAuthLoading(false)
+    }
+  }
+
+  async function submitSocialAuth(provider: 'google' | 'facebook') {
+    const providerName = provider === 'google' ? 'Google' : 'Facebook'
+    const clientId = provider === 'google'
+      ? import.meta.env.VITE_GOOGLE_CLIENT_ID
+      : import.meta.env.VITE_FACEBOOK_APP_ID
+
+    setError('')
+
+    if (!clientId) {
+      setError(`${providerName} login is not configured yet. Add the real OAuth keys to frontend and backend env.`)
+      return
+    }
+
+    setIsAuthLoading(true)
+
+    const redirectUri = `${window.location.origin}${window.location.pathname}`
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'token',
+      state: provider,
+    })
+
+    if (provider === 'google') {
+      params.set('scope', 'openid email profile')
+      params.set('prompt', 'select_account')
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+      return
+    }
+
+    params.set('scope', 'email,public_profile')
+    window.location.href = `https://www.facebook.com/v18.0/dialog/oauth?${params.toString()}`
   }
 
   function submitSignupInfo(event: FormEvent<HTMLFormElement>) {
@@ -585,12 +702,17 @@ function App() {
     setIsProfileSaving(true)
 
     try {
+      const profilePayload = {
+        ...profileForm,
+        date_of_birth: profileForm.date_of_birth || null,
+      }
+
       const data = (await apiRequest('/auth/me/', {
         method: 'PATCH',
         headers: {
           Authorization: `Token ${token}`,
         },
-        body: JSON.stringify(profileForm),
+        body: JSON.stringify(profilePayload),
       })) as User
 
       setUser(data)
@@ -632,6 +754,52 @@ function App() {
     }
   }
 
+  async function promoteListing(car: Car) {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    try {
+      const promotedCar = (await apiRequest(`/cars/${car.id}/promote/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      })) as Car
+
+      setMyListings((currentListings) => currentListings.map((listing) => listing.id === car.id ? promotedCar : listing))
+      setCars((currentCars) => currentCars.map((listing) => listing.id === car.id ? promotedCar : listing))
+      showNotice('Listing promoted')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    }
+  }
+
+  async function updateListing(car: Car, payload: Partial<Pick<Car, 'price' | 'description' | 'status'>>) {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    try {
+      const updatedCar = (await apiRequest(`/cars/${car.id}/`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })) as Car
+
+      setMyListings((currentListings) => currentListings.map((listing) => listing.id === car.id ? updatedCar : listing))
+      setCars((currentCars) => currentCars.map((listing) => listing.id === car.id ? updatedCar : listing))
+      if (selectedCar?.id === car.id) setSelectedCar(updatedCar)
+      showNotice('Listing updated')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    }
+  }
+
   async function submitComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -667,6 +835,53 @@ function App() {
     }
   }
 
+  async function submitReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    const car = selectedCar || cars[0]
+
+    if (!car || reviewRating === 0 || !reviewText.trim()) {
+      showNotice('Choose a rating and write a review')
+      return
+    }
+
+    setIsReviewSending(true)
+
+    try {
+      const review = (await apiRequest(`/cars/${car.id}/reviews/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+        body: JSON.stringify({
+          rating: reviewRating,
+          text: reviewText.trim(),
+          recommend_seller: recommendSeller,
+        }),
+      })) as CarReview
+
+      setReviews((currentReviews) => [review, ...currentReviews])
+      setSelectedCar({
+        ...car,
+        reviews: [review, ...(car.reviews || [])],
+        reviews_count: (car.reviews_count || 0) + 1,
+      })
+      setReviewRating(0)
+      setReviewText('')
+      setRecommendSeller(true)
+      setPage('review-submitted')
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+    } finally {
+      setIsReviewSending(false)
+    }
+  }
+
   function submitBid(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -693,333 +908,33 @@ function App() {
     setBidAmount('')
   }
 
-  function renderCarCard(car: Car, compact = false) {
-    return (
-      <article className={compact ? 'car-card compact-card' : 'car-card'} key={car.id}>
-        <div className="car-media">
-          <button className="media-button" type="button" onClick={() => openCar(car)}>
-            <img src={fallbackImage(car)} alt={carTitle(car)} />
-          </button>
-          <span className="lot-badge">#{String(car.id).padStart(5, '0')}</span>
-          <button
-            className="price-badge"
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              toggleLike(car)
-            }}
-          >
-            {formatPrice(car.price)}
-          </button>
-        </div>
-        <div className="car-body">
-          <button type="button" className="car-title-button" onClick={() => openCar(car)}>
-            {carTitle(car)}
-          </button>
-          <p>{car.description || 'Verified listing, ready for auction.'}</p>
-          <div className="tag-row">
-            <span>{car.fuel_type}</span>
-            <span>{car.transmission}</span>
-            <span>{formatMileage(car.mileage)}</span>
-          </div>
-        </div>
-      </article>
-    )
-  }
-
-  function renderFooter() {
-    return (
-      <footer className="site-footer">
-        <button className="logo footer-logo" type="button" onClick={goHome}>
-          veyo
-        </button>
-        <div>
-          <h4>How it works</h4>
-          <button type="button" onClick={() => showNotice('SafePay page will be added later')}>SafePay</button>
-          <button type="button" onClick={() => showNotice('Buying guide will be added later')}>Buying a Car</button>
-          <button type="button" onClick={() => showNotice('Sale guide will be added later')}>Finalizing the Sale</button>
-        </div>
-        <div>
-          <h4>Sellers</h4>
-          <button type="button" onClick={() => openProtectedPage('profile', 'Car submission page will be added later')}>Submit Your Car</button>
-          <button type="button" onClick={() => openProtectedPage('profile', 'Seller dashboard will be added later')}>Dashboard</button>
-          <button type="button" onClick={() => showNotice('Photo guide will be added later')}>Photo Guide</button>
-        </div>
-        <div>
-          <h4>Helpful links</h4>
-          <button type="button" onClick={() => showNotice('VEYO information page will be added later')}>What's VEYO?</button>
-          <button type="button" onClick={() => showNotice('Terms page will be added later')}>Terms</button>
-          <button type="button" onClick={() => showNotice('Privacy page will be added later')}>Privacy</button>
-        </div>
-      </footer>
-    )
-  }
-
-  function renderAuthCard(showCloseButton = true) {
-    return (
-      <section className="auth-card">
-          {authScreen !== 'login' && (
-            <button
-              className="icon-button back-button"
-              type="button"
-              aria-label="Back"
-              onClick={() => changeAuthScreen(authScreen.startsWith('signup') ? 'signup-info' : 'login')}
-            >
-              &lsaquo;
-            </button>
-          )}
-          {showCloseButton && (
-            <button
-              className="icon-button close-button"
-              type="button"
-              aria-label="Close"
-              onClick={() => setAuthOpen(false)}
-            >
-              &times;
-            </button>
-          )}
-
-          {authScreen === 'login' && (
-            <form className="auth-content" onSubmit={submitLogin}>
-              <h1>Welcome back</h1>
-              <label>
-                Enter your email
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="example@yourmail.com"
-                  required
-                />
-              </label>
-              <label>
-                Enter your password
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="example_password"
-                  required
-                />
-              </label>
-              <div className="form-row">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(event) => setRememberMe(event.target.checked)}
-                  />
-                  Remember me
-                </label>
-                <button className="link-button" type="button" onClick={() => changeAuthScreen('forgot')}>
-                  Forgot password?
-                </button>
-              </div>
-              {message && <p className="form-success">{message}</p>}
-              {error && <p className="form-error">{error}</p>}
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>
-                {isAuthLoading ? 'Loading...' : 'Continue'}
-              </button>
-              <div className="divider">
-                <span>or</span>
-              </div>
-              <div className="social-row">
-                <button type="button" onClick={() => setError('Google login will be added later')}>G</button>
-                <button type="button" onClick={() => setError('Apple login will be added later')}>A</button>
-                <button type="button" onClick={() => setError('Facebook login will be added later')}>f</button>
-              </div>
-              <p className="switch-copy">
-                Don't have an account?
-                <button type="button" onClick={() => changeAuthScreen('signup-info')}>
-                  Sign Up
-                </button>
-              </p>
-            </form>
-          )}
-
-          {authScreen === 'signup-info' && (
-            <form className="auth-content" onSubmit={submitSignupInfo}>
-              <h1>Sign Up</h1>
-              <label>
-                Enter your email
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="example@yourmail.com"
-                  required
-                />
-              </label>
-              <label>
-                Enter your name
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="example Name"
-                  required
-                />
-              </label>
-              <button className="primary-button" type="submit">
-                Continue
-              </button>
-              <div className="divider">
-                <span>or</span>
-              </div>
-              <div className="social-row">
-                <button type="button" onClick={() => setError('Google registration will be added later')}>G</button>
-                <button type="button" onClick={() => setError('Apple registration will be added later')}>A</button>
-                <button type="button" onClick={() => setError('Facebook registration will be added later')}>f</button>
-              </div>
-              <p className="switch-copy">
-                Already have an account?
-                <button type="button" onClick={() => changeAuthScreen('login')}>
-                  Sign in here
-                </button>
-              </p>
-            </form>
-          )}
-
-          {authScreen === 'signup-password' && (
-            <form className="auth-content" onSubmit={submitSignupPassword}>
-              <h1>Sign Up</h1>
-              <label>
-                Create your password
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="example_password"
-                  required
-                />
-              </label>
-              <label>
-                Confirm password
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="example_password"
-                  required
-                />
-              </label>
-              {error && <p className="form-error">{error}</p>}
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>
-                {isAuthLoading ? 'Loading...' : 'Create account'}
-              </button>
-              <p className="switch-copy">
-                Already have an account?
-                <button type="button" onClick={() => changeAuthScreen('login')}>
-                  Sign in here
-                </button>
-              </p>
-            </form>
-          )}
-
-          {authScreen === 'signup-code' && (
-            <form className="auth-content compact-content" onSubmit={submitSignupCode}>
-              <h1>Check your email</h1>
-              <p className="modal-copy">We sent a verification code to your email.</p>
-              <label>
-                Enter code
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder="123456"
-                  required
-                />
-              </label>
-              {error && <p className="form-error">{error}</p>}
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>
-                {isAuthLoading ? 'Loading...' : 'Verify account'}
-              </button>
-            </form>
-          )}
-
-          {authScreen === 'forgot' && (
-            <form className="auth-content compact-content" onSubmit={submitForgot}>
-              <h1>Forgot Password?</h1>
-              <p className="modal-copy">Enter your email and we will send you a verification code.</p>
-              <label>
-                Enter your email
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="example@yourmail.com"
-                  required
-                />
-              </label>
-              {error && <p className="form-error">{error}</p>}
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>
-                {isAuthLoading ? 'Loading...' : 'Send email'}
-              </button>
-            </form>
-          )}
-
-          {authScreen === 'check-email' && (
-            <div className="auth-content compact-content">
-              <h1>Check your email</h1>
-              <p className="modal-copy">We have sent the password reset code to your email.</p>
-              <button className="primary-button" type="button" onClick={() => changeAuthScreen('reset-code')}>
-                Continue
-              </button>
-            </div>
-          )}
-
-          {authScreen === 'reset-code' && (
-            <form className="auth-content compact-content" onSubmit={submitResetCode}>
-              <h1>Enter code</h1>
-              <label>
-                Verification code
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder="123456"
-                  required
-                />
-              </label>
-              <button className="primary-button" type="submit">
-                Continue
-              </button>
-            </form>
-          )}
-
-          {authScreen === 'reset-password' && (
-            <form className="auth-content" onSubmit={submitResetPassword}>
-              <h1>Create new password</h1>
-              <label>
-                Create new password
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="example_password"
-                  required
-                />
-              </label>
-              <label>
-                Confirm password
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  placeholder="example_password"
-                  required
-                />
-              </label>
-              {error && <p className="form-error">{error}</p>}
-              <button className="primary-button" type="submit" disabled={isAuthLoading}>
-                {isAuthLoading ? 'Loading...' : 'Reset password'}
-              </button>
-            </form>
-          )}
-      </section>
-    )
+  const authProps = {
+    authScreen,
+    email,
+    name,
+    password,
+    confirmPassword,
+    code,
+    rememberMe,
+    message,
+    error,
+    isAuthLoading,
+    setEmail,
+    setName,
+    setPassword,
+    setConfirmPassword,
+    setCode,
+    setRememberMe,
+    setAuthOpen,
+    changeAuthScreen,
+    submitLogin,
+    submitSignupInfo,
+    submitSignupPassword,
+    submitSignupCode,
+    submitForgot,
+    submitResetCode,
+    submitResetPassword,
+    submitSocialAuth,
   }
 
   function renderAuthModal() {
@@ -1029,7 +944,7 @@ function App() {
 
     return (
       <div className="auth-overlay">
-        {renderAuthCard()}
+        <AuthCard {...authProps} />
       </div>
     )
   }
@@ -1042,13 +957,8 @@ function App() {
     return (
       <div className="auth-overlay">
         <section className="auth-card bid-card">
-          <button
-            className="icon-button close-button"
-            type="button"
-            aria-label="Close"
-            onClick={() => setBidOpen(false)}
-          >
-            &times;
+          <button className="icon-button close-button" type="button" aria-label="Close" onClick={() => setBidOpen(false)}>
+            x
           </button>
           <form className="auth-content compact-content" onSubmit={submitBid}>
             <h1>{carTitle(selectedCar)}</h1>
@@ -1071,327 +981,153 @@ function App() {
     )
   }
 
-  function renderProfilePage() {
-    if (!user) {
-      return null
-    }
-
-    return (
-      <section className="profile-page">
-        <div className="profile-header">
-          <div>
-            <span>Account</span>
-            <h1>{user.first_name || user.username}</h1>
-          </div>
-          <button type="button" onClick={logout}>Log out</button>
-        </div>
-
-        <form className="profile-panel" onSubmit={submitProfile}>
-          <div className="profile-section-title">
-            <h2>Profile settings</h2>
-            <p>Seller information is used on car pages and contacts.</p>
-          </div>
-
-          <div className="profile-grid">
-            <label>
-              Username
-              <input
-                type="text"
-                value={profileForm.username}
-                onChange={(event) => setProfileForm({ ...profileForm, username: event.target.value })}
-                required
-              />
-            </label>
-            <label>
-              Email
-              <input
-                type="email"
-                value={profileForm.email}
-                onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })}
-                required
-              />
-            </label>
-            <label>
-              First name
-              <input
-                type="text"
-                value={profileForm.first_name}
-                onChange={(event) => setProfileForm({ ...profileForm, first_name: event.target.value })}
-              />
-            </label>
-            <label>
-              Last name
-              <input
-                type="text"
-                value={profileForm.last_name}
-                onChange={(event) => setProfileForm({ ...profileForm, last_name: event.target.value })}
-              />
-            </label>
-            <label>
-              Phone
-              <input
-                type="text"
-                value={profileForm.phone}
-                onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })}
-                placeholder="+380..."
-              />
-            </label>
-            <label>
-              City
-              <input
-                type="text"
-                value={profileForm.city}
-                onChange={(event) => setProfileForm({ ...profileForm, city: event.target.value })}
-                placeholder="Kyiv"
-              />
-            </label>
-          </div>
-
-          {profileMessage && <p className="form-success">{profileMessage}</p>}
-          {profileError && <p className="form-error">{profileError}</p>}
-
-          <div className="profile-actions">
-            <button className="primary-button" type="submit" disabled={isProfileSaving}>
-              {isProfileSaving ? 'Saving...' : 'Save changes'}
-            </button>
-          </div>
-        </form>
-      </section>
-    )
-  }
-
   if (page === 'auth' && !user) {
-    return <main className="auth-page-shell">{renderAuthCard(false)}</main>
+    return (
+      <AuthPage
+        {...authProps}
+        user={user}
+        goHome={goHome}
+        openBuy={openBuy}
+        openError={() => setPage('error')}
+        openAuth={() => openAuth('login')}
+        setPageProfile={() => openProfile('edit')}
+        showNotice={showNotice}
+      />
+    )
   }
 
   return (
     <main className="app-shell">
-      <header className="site-header">
-        <button className="logo" type="button" onClick={goHome}>
-          veyo
-        </button>
-        <nav className="top-nav" aria-label="Primary navigation">
-          <button type="button" onClick={goHome}>Auctions</button>
-          <button type="button" onClick={() => openProtectedPage('profile', 'Car submission page will be added later')}>Sell your car</button>
-          <button type="button" onClick={() => showNotice('VEYO information page will be added later')}>What's VEYO?</button>
-          <button type="button" onClick={() => applyQuickFilter('watched')}>Leaderboard</button>
-        </nav>
-        <label className="header-search">
-          <span>Search</span>
-          <input
-            value={search}
-            onChange={(event) => updateSearch(event.target.value)}
-            onFocus={() => setPage('search')}
-            placeholder="Search for car or model"
-          />
-        </label>
-        <div className="header-actions">
-          <button type="button" aria-label="Notifications" onClick={() => showNotice('No new notifications')}>!</button>
-          {user ? (
-            <button type="button" onClick={() => setPage('profile')}>{user.first_name || user.username}</button>
-          ) : (
-            <button type="button" onClick={() => openAuth('login')}>Sign in</button>
-          )}
-          <button type="button" onClick={() => showNotice('English interface is active')}>EN</button>
-        </div>
-      </header>
+      <Header
+        user={user}
+        goHome={goHome}
+        openAuth={() => openAuth('login')}
+        openProfile={openProfile}
+        openError={() => setPage('error')}
+        showNotice={showNotice}
+        applyBuyTab={applyBuyTab}
+        openProtectedPage={openProtectedPage}
+      />
       {notice && <div className="toast-message">{notice}</div>}
 
       {page === 'profile' && user ? (
-        renderProfilePage()
+        <ProfilePage
+          user={user}
+          activeSection={profileSection}
+          favoriteCars={favoriteCars}
+          myListings={myListings}
+          profileForm={profileForm}
+          profileMessage={profileMessage}
+          profileError={profileError}
+          isProfileSaving={isProfileSaving}
+          isFavoritesLoading={isFavoritesLoading}
+          isListingsLoading={isListingsLoading}
+          setActiveSection={setProfileSection}
+          setProfileForm={setProfileForm}
+          submitProfile={submitProfile}
+          openLogout={() => setPage('logout')}
+          openCar={openCar}
+          toggleLike={toggleLike}
+          promoteListing={promoteListing}
+          updateListing={updateListing}
+          showNotice={showNotice}
+        />
+      ) : page === 'logout' && user ? (
+        <LogoutPage logout={logout} stayLoggedIn={() => setPage('profile')} />
       ) : page === 'detail' && selectedCar ? (
-        <section className="detail-page">
-          <div className="detail-title">
-            <button type="button" onClick={() => setPage(search || brand ? 'search' : 'home')}>Auctions</button>
-            <h1>{carTitle(selectedCar)}</h1>
-            <p>{formatMileage(selectedCar.mileage)} · {selectedCar.fuel_type} · {selectedCar.transmission}</p>
-          </div>
-
-          <section className="detail-hero">
-            <img src={fallbackImage(selectedCar)} alt={carTitle(selectedCar)} />
-            <div className="stats-stack">
-              <span><strong>{selectedCar.likes_count}</strong>Watching</span>
-              <span><strong>{selectedCar.views_count}</strong>Views</span>
-              <span><strong>3</strong>Bids count</span>
-            </div>
-            <p className="hero-note">{selectedCar.description || 'Clean title, verified history and auction-ready listing.'}</p>
-            <button className="bid-button" type="button" onClick={() => token ? setBidOpen(true) : openAuth('login')}>Place Bid</button>
-          </section>
-          {bidMessage && <p className="inline-success">{bidMessage}</p>}
-
-          <div className="detail-layout">
-            <section>
-              <div className="spec-grid">
-                <dl>
-                  <div><dt>Brand</dt><dd>{selectedCar.brand}</dd></div>
-                  <div><dt>Model</dt><dd>{selectedCar.model}</dd></div>
-                  <div><dt>Mileage</dt><dd>{formatMileage(selectedCar.mileage)}</dd></div>
-                  <div><dt>VIN</dt><dd>WBS43AZ0X0{selectedCar.id}975</dd></div>
-                  <div><dt>Title Status</dt><dd>Clean</dd></div>
-                  <div><dt>Location</dt><dd>Portland, OR 97205</dd></div>
-                  <div><dt>Seller</dt><dd>{selectedCar.seller?.username || 'Seller'}</dd></div>
-                </dl>
-                <dl>
-                  <div><dt>Engine</dt><dd>{selectedCar.fuel_type}</dd></div>
-                  <div><dt>Drivetrain</dt><dd>Rear-wheel drive</dd></div>
-                  <div><dt>Transmission</dt><dd>{selectedCar.transmission}</dd></div>
-                  <div><dt>Body Style</dt><dd>Coupe</dd></div>
-                  <div><dt>Exterior Color</dt><dd>Alpine White</dd></div>
-                  <div><dt>Interior Color</dt><dd>Black with yellow</dd></div>
-                  <div><dt>Seller Type</dt><dd>Dealer</dd></div>
-                </dl>
-              </div>
-
-              <article className="detail-copy">
-                <h2>Highlights</h2>
-                <p>{selectedCar.description || 'Ownership documentation, clean paintwork and detailed inspection report are available for this vehicle.'}</p>
-                <h2>Recent Service History</h2>
-                <p>Fresh inspection, fluids checked, tires reviewed and interior prepared before the auction listing.</p>
-                <h2>Equipment</h2>
-                <p>Premium sound system, performance seats, parking assistance and driver-focused cockpit.</p>
-                <h2>Ownership History</h2>
-                <p>The listing data indicates careful ownership and regular mileage updates.</p>
-                <h2>Seller Notes</h2>
-                <p>Ask seller a question before bidding. Important details are reviewed before final sale.</p>
-              </article>
-
-              <section className="comments-panel">
-                <div>
-                  <h2>Comments</h2>
-                  <span>Newest</span>
-                </div>
-                <form onSubmit={submitComment}>
-                  <input
-                    value={commentText}
-                    onChange={(event) => setCommentText(event.target.value)}
-                    placeholder="Leave a Comment below"
-                  />
-                  <button type="submit" disabled={isCommentSending || !commentText.trim()}>
-                    {isCommentSending ? 'Sending...' : 'Send'}
-                  </button>
-                </form>
-                {(selectedCar.comments || []).length > 0 ? (
-                  selectedCar.comments?.map((comment) => (
-                    <p key={comment.id}><strong>{comment.username}</strong>{comment.text}</p>
-                  ))
-                ) : (
-                  <p>No comments yet.</p>
-                )}
-              </section>
-            </section>
-
-            <aside className="other-auctions">
-              <h2>Other auctions</h2>
-              {relatedCars.map((car) => renderCarCard(car, true))}
-            </aside>
-          </div>
-        </section>
+        <CarDetailPage
+          car={selectedCar}
+          relatedCars={relatedCars}
+          bidMessage={bidMessage}
+          commentText={commentText}
+          isCommentSending={isCommentSending}
+          setCommentText={setCommentText}
+          setBidOpen={setBidOpen}
+          submitComment={submitComment}
+          toggleLike={toggleLike}
+          openCar={openCar}
+          openReviews={openReviews}
+          startReview={startReview}
+          showNotice={showNotice}
+        />
+      ) : page === 'reviews' ? (
+        <ReviewsPage
+          reviews={reviews}
+          isLoading={isReviewsLoading}
+          startReview={startReview}
+          goHome={goHome}
+        />
+      ) : page === 'review-form' ? (
+        <LeaveReviewPage
+          car={selectedCar || cars[0] || null}
+          rating={reviewRating}
+          reviewText={reviewText}
+          recommendSeller={recommendSeller}
+          isSending={isReviewSending}
+          setRating={setReviewRating}
+          setReviewText={setReviewText}
+          setRecommendSeller={setRecommendSeller}
+          submitReview={submitReview}
+          cancel={openReviews}
+        />
+      ) : page === 'review-submitted' ? (
+        <ReviewSubmittedPage openReviews={openReviews} goHome={goHome} />
+      ) : page === 'error' ? (
+        <ErrorPage goHome={goHome} />
+      ) : page === 'buy' ? (
+        <BuyPage
+          cars={visibleCars}
+          carsCount={carsCount}
+          models={models}
+          search={search}
+          brand={brand}
+          modelFilter={modelFilter}
+          fuelType={fuelType}
+          priceMax={priceMax}
+          yearMin={yearMin}
+          yearMax={yearMax}
+          mileageMax={mileageMax}
+          colorFilter={colorFilter}
+          ordering={ordering}
+          activeBuyTab={activeBuyTab}
+          isCarsLoading={isCarsLoading}
+          carsError={carsError}
+          previousPage={previousPage}
+          nextPage={nextPage}
+          goHome={goHome}
+          saveSearch={saveSearch}
+          updateSearch={updateSearch}
+          updateBrand={updateBrand}
+          updateModel={updateModel}
+          updateFuel={updateFuel}
+          updatePriceMax={updatePriceMax}
+          updateYearRange={updateYearRange}
+          updateMileage={updateMileage}
+          setColorFilter={setColorFilter}
+          updateOrdering={updateOrdering}
+          applyBuyTab={applyBuyTab}
+          setPageUrl={setPageUrl}
+          showNotice={showNotice}
+          openCar={openCar}
+          toggleLike={toggleLike}
+        />
       ) : (
-        <>
-          {page === 'home' && (
-            <section className="featured-grid" aria-label="Featured cars">
-              <article className="featured-card featured-large">
-                <img src={heroImages[0]} alt="Porsche Panamera" />
-                <div><h1>2020 Porsche Panamera 4</h1><span>Online auction</span></div>
-              </article>
-              <article className="featured-card">
-                <img src={heroImages[1]} alt="Featured car" />
-                <div><h2>Featured cars</h2><span>Top bids</span></div>
-              </article>
-              <article className="featured-card">
-                <img src={heroImages[2]} alt="Newly added car" />
-                <div><h2>Newly added</h2><span>Fresh stock</span></div>
-              </article>
-              <article className="featured-card featured-wide">
-                <img src={heroImages[3]} alt="Ford Galaxie" />
-                <div><h2>1964 Ford Galaxie 500 Convertible</h2><span>Classic collection</span></div>
-              </article>
-            </section>
-          )}
-
-          <section className={page === 'search' ? 'search-page auction-section' : 'auction-section'} id="auctions">
-            {page === 'search' && (
-              <div className="search-heading">
-                <h1>{searchHeading}</h1>
-                <div>
-                  <button type="button" onClick={goHome}>Back to main page</button>
-                  <button type="button" onClick={saveSearch}>Save Search and Notify Me Later</button>
-                </div>
-              </div>
-            )}
-
-            <div className="section-bar">
-              <h2>{page === 'search' ? `${searchHeading} Auctions` : 'Auctions'}</h2>
-              <div className="filters">
-                <button
-                  type="button"
-                  className={activeFilter === 'ending' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => applyQuickFilter('ending')}
-                >
-                  Ending soon
-                </button>
-                <button
-                  type="button"
-                  className={activeFilter === 'new' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => applyQuickFilter('new')}
-                >
-                  New cars
-                </button>
-                <button
-                  type="button"
-                  className={activeFilter === 'watched' ? 'filter-chip active' : 'filter-chip'}
-                  onClick={() => applyQuickFilter('watched')}
-                >
-                  Most watched
-                </button>
-                <select value={brand} onChange={(event) => updateBrand(event.target.value)}>
-                  <option value="">All brands</option>
-                  {brands.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
-                <select value={fuelType} onChange={(event) => updateFuel(event.target.value)}>
-                  <option value="">Fuel</option>
-                  <option value="petrol">Petrol</option>
-                  <option value="diesel">Diesel</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="electric">Electric</option>
-                  <option value="gas">Gas</option>
-                </select>
-                <select value={ordering} onChange={(event) => updateOrdering(event.target.value)}>
-                  <option value="-created_at">Recently ended</option>
-                  <option value="mileage">Lowest mileage</option>
-                  <option value="-mileage">Highest mileage</option>
-                  <option value="price">Lowest price</option>
-                  <option value="-price">Highest price</option>
-                  <option value="-year">Newest year</option>
-                </select>
-              </div>
-            </div>
-
-            {carsError && <p className="cars-error">{carsError}</p>}
-
-            <div className={page === 'search' ? 'search-results cars-grid' : 'cars-grid'}>
-              {visibleCars.map((car) => renderCarCard(car))}
-            </div>
-            {!isCarsLoading && visibleCars.length === 0 && (
-              <div className="empty-state">
-                <h3>No cars found</h3>
-                <p>Try another model, brand or fuel type.</p>
-                <button type="button" onClick={goHome}>Reset search</button>
-              </div>
-            )}
-
-            <div className="pagination-bar">
-              <span>{isCarsLoading ? 'Loading cars...' : `${carsCount} cars available`}</span>
-              <div>
-                <button type="button" disabled={!previousPage} onClick={() => setPageUrl(previousPage)}>Previous</button>
-                <button type="button" disabled={!nextPage} onClick={() => setPageUrl(nextPage)}>Next</button>
-              </div>
-            </div>
-          </section>
-        </>
+        <HomePage
+          cars={visibleCars}
+          isCarsLoading={isCarsLoading}
+          openCar={openCar}
+          toggleLike={toggleLike}
+          openBuy={openBuy}
+          showNotice={showNotice}
+        />
       )}
 
-      {renderFooter()}
+      <Footer
+        showNotice={showNotice}
+        openSupport={() => openProfile('support')}
+        openBuy={openBuy}
+        openError={() => setPage('error')}
+      />
       {renderBidModal()}
       {renderAuthModal()}
     </main>

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Car, CarComment, CarImage, CarLike
+from .models import Car, CarComment, CarImage, CarLike, CarReview, SavedSearch
 
 
 class CarImageInline(admin.TabularInline):
@@ -18,11 +18,12 @@ class CarAdmin(admin.ModelAdmin):
         'price',
         'fuel_type',
         'status',
+        'is_promoted',
         'owner',
         'views_count',
         'created_at',
     ]
-    list_filter = ['status', 'brand', 'fuel_type', 'transmission', 'year']
+    list_filter = ['status', 'is_promoted', 'brand', 'fuel_type', 'transmission', 'year']
     search_fields = ['brand', 'model', 'description', 'owner__username', 'owner__email']
     inlines = [CarImageInline]
 
@@ -46,3 +47,17 @@ class CarCommentAdmin(admin.ModelAdmin):
     list_display = ['id', 'car', 'user', 'created_at']
     list_filter = ['created_at']
     search_fields = ['text', 'user__username', 'user__email', 'car__brand', 'car__model']
+
+
+@admin.register(CarReview)
+class CarReviewAdmin(admin.ModelAdmin):
+    list_display = ['id', 'car', 'user', 'rating', 'recommend_seller', 'created_at']
+    list_filter = ['rating', 'recommend_seller', 'created_at']
+    search_fields = ['text', 'user__username', 'user__email', 'car__brand', 'car__model']
+
+
+@admin.register(SavedSearch)
+class SavedSearchAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'title', 'query', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['title', 'query', 'user__username', 'user__email']

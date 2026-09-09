@@ -10,7 +10,7 @@ User = get_user_model()
 class SellerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SellerProfile
-        fields = ['phone', 'city']
+        fields = ['phone', 'city', 'date_of_birth', 'country', 'street_address', 'state_province']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -24,10 +24,25 @@ class UserSerializer(serializers.ModelSerializer):
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
     city = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    date_of_birth = serializers.DateField(required=False, allow_null=True, write_only=True)
+    country = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    street_address = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    state_province = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'city']
+        fields = [
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'phone',
+            'city',
+            'date_of_birth',
+            'country',
+            'street_address',
+            'state_province',
+        ]
 
     def validate_username(self, value):
         if User.objects.exclude(pk=self.instance.pk).filter(username__iexact=value).exists():
@@ -42,6 +57,10 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         phone = validated_data.pop('phone', None)
         city = validated_data.pop('city', None)
+        date_of_birth = validated_data.pop('date_of_birth', None)
+        country = validated_data.pop('country', None)
+        street_address = validated_data.pop('street_address', None)
+        state_province = validated_data.pop('state_province', None)
 
         for field, value in validated_data.items():
             setattr(instance, field, value)
@@ -52,6 +71,14 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             profile.phone = phone
         if city is not None:
             profile.city = city
+        if date_of_birth is not None:
+            profile.date_of_birth = date_of_birth
+        if country is not None:
+            profile.country = country
+        if street_address is not None:
+            profile.street_address = street_address
+        if state_province is not None:
+            profile.state_province = state_province
         profile.save()
 
         return instance
@@ -61,10 +88,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     phone = serializers.CharField(required=False, allow_blank=True, write_only=True)
     city = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    country = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'password', 'phone', 'city']
+        fields = ['id', 'email', 'username', 'first_name', 'password', 'phone', 'city', 'country']
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -74,6 +102,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         phone = validated_data.pop('phone', '')
         city = validated_data.pop('city', '')
+        country = validated_data.pop('country', '')
         email = validated_data['email'].lower()
         username = validated_data.get('username') or email
         user = User(
@@ -84,7 +113,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
-        SellerProfile.objects.create(user=user, phone=phone, city=city)
+        SellerProfile.objects.create(user=user, phone=phone, city=city, country=country)
         return user
 
 
@@ -161,3 +190,8 @@ class ForgotPasswordSerializer(serializers.Serializer):
 
 class ResetPasswordSerializer(EmailCodeSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+
+
+class SocialAuthSerializer(serializers.Serializer):
+    provider = serializers.ChoiceField(choices=['google', 'facebook'])
+    access_token = serializers.CharField(write_only=True)
