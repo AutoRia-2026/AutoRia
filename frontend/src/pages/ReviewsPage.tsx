@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CarReview } from '../types/cars'
 
 type ReviewsPageProps = {
@@ -5,12 +6,22 @@ type ReviewsPageProps = {
   isLoading: boolean
   startReview: () => void
   goHome: () => void
+  showNotice: (message: string) => void
 }
 
-function ReviewsPage({ reviews, isLoading, startReview, goHome }: ReviewsPageProps) {
+function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: ReviewsPageProps) {
+  const [helpfulReviewIds, setHelpfulReviewIds] = useState<number[]>([])
   const average = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 4.7
+
+  function toggleHelpful(reviewId: number) {
+    setHelpfulReviewIds((currentIds) => (
+      currentIds.includes(reviewId)
+        ? currentIds.filter((id) => id !== reviewId)
+        : [...currentIds, reviewId]
+    ))
+  }
 
   return (
     <section className="reviews-page">
@@ -22,7 +33,7 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome }: ReviewsPagePro
       <section className="rating-summary">
         <div>
           <strong>{average.toFixed(1)}</strong>
-          <span>★★★★☆</span>
+          <span>****-</span>
           <p>Based on {Math.max(reviews.length, 103)} reviews</p>
         </div>
         <div className="rating-bars">
@@ -56,15 +67,18 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome }: ReviewsPagePro
               <span>{new Date(review.created_at).toLocaleDateString()}</span>
             </div>
             <div className="review-text">
-              <strong>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</strong>
+              <strong>{'*'.repeat(review.rating)}{'-'.repeat(5 - review.rating)}</strong>
               <p>{review.text}</p>
-              <button type="button">Helpful ({review.recommend_seller ? 6 : 1})</button>
+              <button type="button" onClick={() => toggleHelpful(review.id)}>
+                Helpful ({(review.recommend_seller ? 6 : 1) + (helpfulReviewIds.includes(review.id) ? 1 : 0)})
+              </button>
             </div>
             <img src={review.car_image_url} alt={review.car_title} />
-            <button type="button" aria-label="Review menu" onClick={goHome}>...</button>
+            <button type="button" aria-label="Review menu" onClick={() => showNotice('Review actions opened')}>...</button>
           </article>
         ))}
       </div>
+      <button className="secondary-button" type="button" onClick={goHome}>Continue browsing</button>
     </section>
   )
 }

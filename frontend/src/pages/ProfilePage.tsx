@@ -64,6 +64,7 @@ function ProfilePage({
   const isEdit = activeSection === 'edit'
   const showProfileBanner = ['favorites', 'notifications', 'history', 'support'].includes(activeSection)
   const [listingStatus, setListingStatus] = useState('all')
+  const [notificationsRead, setNotificationsRead] = useState(false)
 
   return (
     <section className="account-page">
@@ -165,12 +166,17 @@ function ProfilePage({
             isLoading={isFavoritesLoading}
             openCar={openCar}
             toggleLike={toggleLike}
-            showNotice={showNotice}
           />
         )}
 
-        {activeSection === 'notifications' && <NotificationsSection />}
-        {activeSection === 'history' && <HistorySection />}
+        {activeSection === 'notifications' && (
+          <NotificationsSection
+            notificationsRead={notificationsRead}
+            setNotificationsRead={setNotificationsRead}
+            showNotice={showNotice}
+          />
+        )}
+        {activeSection === 'history' && <HistorySection showNotice={showNotice} />}
         {activeSection === 'listings' && (
           <ListingsSection
             cars={myListings}
@@ -203,25 +209,31 @@ function FavoritesSection({
   isLoading,
   openCar,
   toggleLike,
-  showNotice,
 }: {
   cars: Car[]
   isLoading: boolean
   openCar: (car: Car) => void
   toggleLike: (car: Car) => void
-  showNotice: (message: string) => void
 }) {
+  const [sortBy, setSortBy] = useState('newest')
+  const sortedCars = [...cars].sort((firstCar, secondCar) => {
+    if (sortBy === 'oldest') return new Date(firstCar.created_at).getTime() - new Date(secondCar.created_at).getTime()
+    if (sortBy === 'price-high') return Number(secondCar.price) - Number(firstCar.price)
+    if (sortBy === 'price-low') return Number(firstCar.price) - Number(secondCar.price)
+    return new Date(secondCar.created_at).getTime() - new Date(firstCar.created_at).getTime()
+  })
+
   return (
     <section className="favorites-section">
       <div className="profile-section-head">
         <h1>My Favorites</h1>
         <label>
           Sort by
-          <select onChange={(event) => showNotice(`Sorting by ${event.target.value}`)}>
-            <option>Newest</option>
-            <option>Oldest</option>
-            <option>Price: High to Low</option>
-            <option>Price: Low to High</option>
+          <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="price-low">Price: Low to High</option>
           </select>
         </label>
       </div>
@@ -230,7 +242,7 @@ function FavoritesSection({
       {!isLoading && cars.length === 0 && <p className="soft-note">Liked cars will appear here.</p>}
 
       <div className="favorites-grid">
-        {cars.slice(0, 3).map((car) => (
+        {sortedCars.map((car) => (
           <BuyCarCard key={car.id} car={car} openCar={openCar} toggleLike={toggleLike} />
         ))}
       </div>
@@ -238,7 +250,15 @@ function FavoritesSection({
   )
 }
 
-function NotificationsSection() {
+function NotificationsSection({
+  notificationsRead,
+  setNotificationsRead,
+  showNotice,
+}: {
+  notificationsRead: boolean
+  setNotificationsRead: (value: boolean) => void
+  showNotice: (message: string) => void
+}) {
   const today = [
     ['New message', 'John Smith sent you a message about your BMW X5.', '5 min ago'],
     ['New offer received', 'You received an offer of $41,500 for your BMW X5.', '34 min ago'],
@@ -253,30 +273,49 @@ function NotificationsSection() {
           <h1>Notifications</h1>
           <p>Stay up to date with your account activity and vehicle listings.</p>
         </div>
-        <button type="button">Mark all as read</button>
+        <button
+          type="button"
+          onClick={() => {
+            setNotificationsRead(true)
+            showNotice('Notifications marked as read')
+          }}
+          disabled={notificationsRead}
+        >
+          {notificationsRead ? 'All read' : 'Mark all as read'}
+        </button>
       </div>
 
-      <NotificationGroup title="Today" items={today} />
-      <NotificationGroup title="Yesterday" items={yesterday} />
+      <NotificationGroup title="Today" items={today} muted={notificationsRead} showNotice={showNotice} />
+      <NotificationGroup title="Yesterday" items={yesterday} muted={notificationsRead} showNotice={showNotice} />
       <p className="no-more-activity">No more activity</p>
     </section>
   )
 }
 
-function NotificationGroup({ title, items }: { title: string; items: string[][] }) {
+function NotificationGroup({
+  title,
+  items,
+  muted = false,
+  showNotice,
+}: {
+  title: string
+  items: string[][]
+  muted?: boolean
+  showNotice: (message: string) => void
+}) {
   return (
     <div className="notification-group">
       <h2>{title}</h2>
       <div>
         {items.map(([label, text, time]) => (
-          <article key={`${label}-${time}`}>
+          <article key={`${label}-${time}`} className={muted ? 'muted' : ''}>
             <span>{label === 'New offer received' ? 'Tag' : 'Msg'}</span>
             <div>
               <strong>{label}</strong>
               <p>{text}</p>
             </div>
             <time>{time}</time>
-            <button type="button" aria-label="Notification menu">...</button>
+            <button type="button" aria-label="Notification menu" onClick={() => showNotice('Notification menu opened')}>...</button>
           </article>
         ))}
       </div>
@@ -284,7 +323,7 @@ function NotificationGroup({ title, items }: { title: string; items: string[][] 
   )
 }
 
-function HistorySection() {
+function HistorySection({ showNotice }: { showNotice: (message: string) => void }) {
   const today = [
     ['Listing Published', 'Your BMW X5 listing has been successfully published.', '6 min ago'],
     ['Offer Accepted', 'You accepted an offer of $42,000 for your BMW X5.', '1 hour ago'],
@@ -298,8 +337,8 @@ function HistorySection() {
         <h1>History</h1>
         <p>View your recent activity and track all important actions.</p>
       </div>
-      <NotificationGroup title="Today" items={today} />
-      <NotificationGroup title="Yesterday" items={yesterday} />
+      <NotificationGroup title="Today" items={today} showNotice={showNotice} />
+      <NotificationGroup title="Yesterday" items={yesterday} showNotice={showNotice} />
       <p className="no-more-activity">No more activity</p>
     </section>
   )
@@ -326,6 +365,7 @@ function ListingsSection({
 }) {
   const [sortBy, setSortBy] = useState('newest')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
   const [editPrice, setEditPrice] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const tabs = [
@@ -449,7 +489,29 @@ function ListingsSection({
                   </button>
                 )}
                 {car.status === 'active' && <button className="promote-button" type="button" onClick={() => promoteListing(car)}>{car.is_promoted ? 'Promoted' : 'Promote'}</button>}
-                <button type="button" aria-label="Listing menu" onClick={() => showNotice('Listing actions opened')}>...</button>
+                <button
+                  type="button"
+                  aria-label="Listing menu"
+                  onClick={() => setOpenMenuId(openMenuId === car.id ? null : car.id)}
+                >
+                  ...
+                </button>
+                {openMenuId === car.id && (
+                  <div className="listing-menu-popover">
+                    <button type="button" onClick={() => openCar(car)}>View</button>
+                    {car.status !== 'sold' ? (
+                      <button type="button" onClick={() => updateListing(car, { status: 'sold' })}>Mark sold</button>
+                    ) : (
+                      <button type="button" onClick={() => updateListing(car, { status: 'active' })}>Activate</button>
+                    )}
+                    <button type="button" onClick={() => {
+                      setOpenMenuId(null)
+                      showNotice('Listing menu closed')
+                    }}>
+                      Close
+                    </button>
+                  </div>
+                )}
               </div>
             </article>
           )

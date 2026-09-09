@@ -6,6 +6,7 @@ type HeaderProps = {
   goHome: () => void
   openRent: () => void
   openSell: () => void
+  openMessages: () => void
   openAuth: () => void
   openProfile: (section?: ProfileSection) => void
   openError: () => void
@@ -17,6 +18,7 @@ function Header({
   goHome,
   openRent,
   openSell,
+  openMessages,
   openAuth,
   openProfile,
   openError,
@@ -28,7 +30,7 @@ function Header({
       <nav aria-label="Primary navigation">
         <button type="button" onClick={goHome}>Home</button>
         <button type="button" onClick={() => user ? openProfile('edit') : openAuth()}>Profile</button>
-        <button type="button" onClick={() => user ? openProfile('notifications') : openAuth()}>Messages</button>
+        <button type="button" onClick={openMessages}>Messages</button>
         <button type="button" onClick={openRent}>Rent</button>
         <button type="button" onClick={() => applyBuyTab('All cars')}>Buy</button>
         <button type="button" onClick={openSell}>Sell</button>

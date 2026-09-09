@@ -1,20 +1,27 @@
 type FooterProps = {
-  showNotice: (message: string) => void
   openSupport: () => void
   openBuy: () => void
   openError: () => void
 }
 
-function Footer({ showNotice, openSupport, openBuy, openError }: FooterProps) {
+const socialLinks = [
+  ['IG', 'https://www.instagram.com/'],
+  ['TG', 'https://t.me/'],
+  ['TT', 'https://www.tiktok.com/'],
+  ['X', 'https://x.com/'],
+]
+
+function Footer({ openSupport, openBuy, openError }: FooterProps) {
   return (
     <footer className="site-footer drive-footer">
       <div>
         <h4>Follow us:</h4>
         <div className="social-icons">
-          <button type="button" onClick={() => showNotice('Instagram will be added later')}>IG</button>
-          <button type="button" onClick={() => showNotice('Telegram will be added later')}>TG</button>
-          <button type="button" onClick={() => showNotice('TikTok will be added later')}>TT</button>
-          <button type="button" onClick={() => showNotice('X profile will be added later')}>X</button>
+          {socialLinks.map(([label, href]) => (
+            <a key={label} href={href} target="_blank" rel="noreferrer" aria-label={`Open ${label}`}>
+              {label}
+            </a>
+          ))}
         </div>
       </div>
       <div>

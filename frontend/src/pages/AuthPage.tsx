@@ -19,6 +19,7 @@ type AuthPageProps = {
   openRent: () => void
   openBuy: () => void
   openSell: () => void
+  openMessages: () => void
   openError: () => void
   openAuth: () => void
   setPageProfile: () => void
@@ -49,7 +50,7 @@ function AuthPage(props: AuthPageProps) {
         <nav aria-label="Auth navigation">
           <button type="button" onClick={props.goHome}>Home</button>
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Profile</button>
-          <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Messages</button>
+          <button type="button" onClick={props.openMessages}>Messages</button>
           <button type="button" onClick={props.openRent}>Rent</button>
           <button type="button" onClick={props.openBuy}>Buy</button>
           <button type="button" onClick={props.openSell}>Sell</button>

@@ -98,3 +98,58 @@ export type SellListingForm = {
   minimum_rent_days: string
   images: string[]
 }
+
+export type Message = {
+  id: number
+  conversation: number
+  sender: number
+  sender_name: string
+  text: string
+  is_read: boolean
+  created_at: string
+}
+
+export type Conversation = {
+  id: number
+  car: number
+  car_title: string
+  car_image_url: string
+  buyer: number
+  buyer_name: string
+  seller: number
+  seller_name: string
+  participant_name: string
+  latest_message: Message | null
+  unread_count: number
+  messages: Message[]
+  created_at: string
+  updated_at: string
+}
+
+export type RentalBooking = {
+  id: number
+  car: number
+  car_title: string
+  car_image_url: string
+  renter: number
+  renter_name: string
+  seller: number
+  seller_name: string
+  start_date: string
+  end_date: string
+  pickup_location: string
+  dropoff_location: string
+  days: number
+  total_price: string
+  deposit: string
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export type RentalBookingForm = {
+  start_date: string
+  end_date: string
+  pickup_location: string
+  dropoff_location: string
+}
