@@ -585,6 +585,41 @@ class CarStatusTests(APITestCase):
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['brand'], 'BMW')
 
+    def test_owner_can_reactivate_sold_listing(self):
+        owner = get_user_model().objects.create_user(
+            username='soldowner',
+            email='soldowner@example.com',
+            password='StrongPass123',
+        )
+        other_user = get_user_model().objects.create_user(
+            username='soldother',
+            email='soldother@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=owner,
+            brand='BMW',
+            model='M4',
+            year=2023,
+            mileage=4500,
+            price='150000.00',
+            transmission='automatic',
+            fuel_type='petrol',
+            status=Car.STATUS_SOLD,
+        )
+
+        self.client.force_authenticate(user=owner)
+        response = self.client.patch(f'/api/cars/{car.id}/', {'status': Car.STATUS_ACTIVE}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        car.refresh_from_db()
+        self.assertEqual(car.status, Car.STATUS_ACTIVE)
+
+        self.client.force_authenticate(user=other_user)
+        forbidden_response = self.client.patch(f'/api/cars/{car.id}/', {'price': '1.00'}, format='json')
+
+        self.assertEqual(forbidden_response.status_code, 403)
+
 
 class SellerProfileTests(APITestCase):
     def test_car_response_includes_seller_contacts(self):

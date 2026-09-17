@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Car, CarComment } from '../types/cars'
 import BuyCarCard from '../components/BuyCarCard'
@@ -50,6 +51,12 @@ function CarDetailPage({
   const reviews = car.reviews || []
   const firstReview = reviews[0]
   const shareUrl = `${window.location.origin}${window.location.pathname}#car-${car.id}`
+  const galleryImages = car.images?.length ? car.images.map((image) => image.image_url) : [fallbackImage(car)]
+  const [activeImageIndex, setActiveImageIndex] = useState(0)
+
+  useEffect(() => {
+    setActiveImageIndex(0)
+  }, [car.id])
 
   function copyShareLink() {
     if (!navigator.clipboard) {
@@ -71,21 +78,49 @@ function CarDetailPage({
           <p>{car.year} / {formatMileage(car.mileage)} / {car.fuel_type} / {car.transmission}</p>
         </div>
         <div>
-          <button type="button" onClick={() => contactSeller(car)}>
-            Contact Seller
-          </button>
-          {car.is_available_for_rent && (
-            <button type="button" onClick={() => openBooking(car)}>
-              Book rental
-            </button>
-          )}
-          <button type="button" aria-label="Add to favorites" onClick={() => toggleLike(car)}>♡</button>
+          <button type="button" onClick={() => contactSeller(car)}>Contact Seller</button>
+          {car.is_available_for_rent && <button type="button" onClick={() => openBooking(car)}>Book rental</button>}
+          <button type="button" aria-label="Add to favorites" onClick={() => toggleLike(car)}>Save</button>
           <button type="button" aria-label="Share car" onClick={copyShareLink}>Share</button>
         </div>
       </div>
 
       <section className="car-hero-panel">
-        <img src={fallbackImage(car)} alt={carTitle(car)} />
+        <img src={galleryImages[activeImageIndex]} alt={carTitle(car)} />
+        {galleryImages.length > 1 && (
+          <div className="detail-gallery-controls">
+            <button
+              type="button"
+              onClick={() => setActiveImageIndex((activeImageIndex - 1 + galleryImages.length) % galleryImages.length)}
+              aria-label="Previous vehicle photo"
+            >
+              {'<'}
+            </button>
+            <span>{activeImageIndex + 1} / {galleryImages.length}</span>
+            <button
+              type="button"
+              onClick={() => setActiveImageIndex((activeImageIndex + 1) % galleryImages.length)}
+              aria-label="Next vehicle photo"
+            >
+              {'>'}
+            </button>
+          </div>
+        )}
+        {galleryImages.length > 1 && (
+          <div className="detail-thumbnail-strip">
+            {galleryImages.map((imageUrl, index) => (
+              <button
+                key={imageUrl}
+                type="button"
+                className={index === activeImageIndex ? 'active' : ''}
+                onClick={() => setActiveImageIndex(index)}
+                aria-label={`Show vehicle photo ${index + 1}`}
+              >
+                <img src={imageUrl} alt={`${carTitle(car)} ${index + 1}`} />
+              </button>
+            ))}
+          </div>
+        )}
         <div className="hero-chip-stack">
           <article><strong>{formatPrice(car.price)}</strong><span>Price</span></article>
           <article><strong>{car.brand}</strong><span>Brand</span></article>
@@ -117,7 +152,7 @@ function CarDetailPage({
 
         <section className="detail-panel features-panel">
           <h2>Features</h2>
-          {features.map((feature) => <span key={feature}>✓ {feature}</span>)}
+          {features.map((feature) => <span key={feature}>OK {feature}</span>)}
         </section>
 
         <section className="detail-panel description-panel">

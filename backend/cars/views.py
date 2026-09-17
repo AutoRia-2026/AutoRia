@@ -30,6 +30,8 @@ class CarViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.action == 'my':
             queryset = Car.objects.filter(owner=self.request.user)
+        elif self.action in {'retrieve', 'update', 'partial_update', 'destroy', 'promote'} and self.request.user.is_authenticated:
+            queryset = Car.objects.filter(Q(status=Car.STATUS_ACTIVE) | Q(owner=self.request.user))
         else:
             queryset = Car.objects.filter(status=Car.STATUS_ACTIVE)
 

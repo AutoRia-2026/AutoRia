@@ -178,7 +178,7 @@ function SellPage({
               {form.images.map((image, index) => (
                 <label key={index}>
                   Photo {index + 1}
-                  <input value={image} onChange={(event) => updateImage(index, event.target.value)} placeholder="https://example.com/car.jpg" />
+                  <input value={image} onChange={(event) => updateImage(index, event.target.value)} placeholder="Paste a direct vehicle photo URL" />
                 </label>
               ))}
             </div>
