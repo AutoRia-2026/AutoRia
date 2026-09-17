@@ -192,6 +192,16 @@ textarea:focus {
   border: 0;
   border-radius: 6px;
   background: rgba(70, 83, 105, 0.8);
+  color: #fff;
+  font-size: 34px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.spotlight-side:hover {
+  transform: translateY(-2px);
+  background: rgba(82, 101, 132, 0.95);
 }
 
 .spotlight-meta {
@@ -2825,6 +2835,19 @@ textarea:focus {
   height: 82px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+.account-avatar-fallback {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #284278, #111d32);
+  border: 1px solid rgba(218, 228, 245, 0.35);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .account-user span {

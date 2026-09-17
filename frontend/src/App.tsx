@@ -72,6 +72,7 @@ function App() {
   const [activeFilter, setActiveFilter] = useState('ending')
   const [activeBuyTab, setActiveBuyTab] = useState('All cars')
   const [pageUrl, setPageUrl] = useState<string | null>(null)
+  const [lastCatalogPage, setLastCatalogPage] = useState<'buy' | 'rent'>('buy')
   const [refreshIndex, setRefreshIndex] = useState(0)
   const [notice, setNotice] = useState('')
   const [profileSection, setProfileSection] = useState<ProfileSection>('edit')
@@ -117,6 +118,7 @@ function App() {
     country: '',
     street_address: '',
     state_province: '',
+    avatar_url: '',
   })
   const [profileMessage, setProfileMessage] = useState('')
   const [profileError, setProfileError] = useState('')
@@ -222,6 +224,7 @@ function App() {
       country: user.seller_profile?.country || '',
       street_address: user.seller_profile?.street_address || '',
       state_province: user.seller_profile?.state_province || '',
+      avatar_url: user.seller_profile?.avatar_url || '',
     })
     setSellForm((currentForm) => ({
       ...currentForm,
@@ -317,7 +320,7 @@ function App() {
   }, [page, profileSection, refreshIndex, token])
 
   useEffect(() => {
-    if (page !== 'messages' || !token) {
+    if (!token || (page !== 'messages' && !(page === 'profile' && profileSection === 'notifications'))) {
       return
     }
 
@@ -356,7 +359,7 @@ function App() {
     return () => {
       isCurrent = false
     }
-  }, [page, token])
+  }, [page, profileSection, token])
 
   function showNotice(text: string) {
     setNotice(text)
@@ -402,6 +405,33 @@ function App() {
     setPage('home')
     setNotice('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function goBack() {
+    setNotice('')
+
+    if (authOpen) {
+      setAuthOpen(false)
+      return
+    }
+
+    if (page === 'review-form') {
+      openReviews()
+      return
+    }
+
+    if (page === 'detail') {
+      setPage(lastCatalogPage)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    if (page === 'logout') {
+      setPage('profile')
+      return
+    }
+
+    goHome()
   }
 
   function openBuy() {
@@ -508,6 +538,12 @@ function App() {
     setActiveBuyTab(tab)
     setPageUrl(null)
     setPage(targetPage)
+    setSearch('')
+    setBrand('')
+    setModelFilter('')
+    setFuelType('')
+    setMileageMax('')
+    setColorFilter('')
 
     if (tab === 'All cars') {
       setYearMin('2015')
@@ -538,12 +574,14 @@ function App() {
     }
 
     if (tab === 'Certified pre-owned') {
+      setModelFilter('')
       setSearch('certified')
       setOrdering('-year')
       return
     }
 
     if (tab === 'Import/Auctions') {
+      setModelFilter('')
       setSearch('import auction')
       setOrdering('-created_at')
       return
@@ -579,6 +617,9 @@ function App() {
   }
 
   async function openCar(car: Car) {
+    if (page === 'rent' || page === 'buy') {
+      setLastCatalogPage(page)
+    }
     setPage('detail')
     setBidMessage('')
     setBidAmount('')
@@ -888,6 +929,9 @@ function App() {
           Authorization: `Token ${token}`,
         },
       })
+      showNotice('Removed from favorites')
+    } else if (response.ok) {
+      showNotice('Added to favorites')
     }
 
     setRefreshIndex((currentValue) => currentValue + 1)
@@ -978,7 +1022,6 @@ function App() {
         },
         body: JSON.stringify({
           car: car.id,
-          text: `Hi, is the ${carTitle(car)} still available?`,
         }),
       })) as Conversation
 
@@ -989,7 +1032,7 @@ function App() {
       setActiveConversation(conversation)
       setMessageText('')
       setPage('messages')
-      showNotice('Conversation started')
+      showNotice('Conversation opened')
     } catch (requestError) {
       showNotice(parseApiError(requestError))
     }
@@ -1464,7 +1507,7 @@ function App() {
         openBuy={openBuy}
         openSell={openSell}
         openMessages={openMessages}
-        openError={() => setPage('error')}
+        openSupport={() => showNotice('Log in to open support from your profile')}
         openAuth={() => openAuth('login')}
         setPageProfile={() => openProfile('edit')}
         showNotice={showNotice}
@@ -1482,7 +1525,9 @@ function App() {
         openMessages={openMessages}
         openAuth={() => openAuth('login')}
         openProfile={openProfile}
-        openError={() => setPage('error')}
+        openSupport={() => openProfile('support')}
+        goBack={goBack}
+        canGoBack={page !== 'home'}
         applyBuyTab={applyBuyTab}
       />
       {notice && <div className="toast-message">{notice}</div>}
@@ -1508,6 +1553,7 @@ function App() {
           promoteListing={promoteListing}
           updateListing={updateListing}
           showNotice={showNotice}
+          conversations={conversations}
         />
       ) : page === 'logout' && user ? (
         <LogoutPage logout={logout} stayLoggedIn={() => setPage('profile')} />
@@ -1667,7 +1713,7 @@ function App() {
       <Footer
         openSupport={() => openProfile('support')}
         openBuy={openBuy}
-        openError={() => setPage('error')}
+        showNotice={showNotice}
       />
       {renderBidModal()}
       {renderBookingModal()}

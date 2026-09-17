@@ -20,7 +20,7 @@ type AuthPageProps = {
   openBuy: () => void
   openSell: () => void
   openMessages: () => void
-  openError: () => void
+  openSupport: () => void
   openAuth: () => void
   setPageProfile: () => void
   showNotice: (message: string) => void
@@ -57,7 +57,7 @@ function AuthPage(props: AuthPageProps) {
         </nav>
         <div className="drive-header-icons">
           <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Fav</button>
-          <button type="button" onClick={props.openError}>?</button>
+          <button type="button" onClick={props.openSupport}>?</button>
         </div>
       </header>
       <section className="drive-auth-layout">

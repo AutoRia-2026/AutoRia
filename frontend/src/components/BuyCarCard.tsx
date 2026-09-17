@@ -22,8 +22,8 @@ function BuyCarCard({ car, mode = 'buy', openCar, toggleLike }: BuyCarCardProps)
           <img src={fallbackImage(car)} alt={carTitle(car)} />
         </button>
         <span>Trusted Seller</span>
-        <button type="button" aria-label="Like car" onClick={() => toggleLike(car)}>
-          Like
+        <button type="button" aria-label="Add to favorites" onClick={() => toggleLike(car)}>
+          ♡
         </button>
       </div>
       <div className="buy-card-body">
@@ -39,7 +39,7 @@ function BuyCarCard({ car, mode = 'buy', openCar, toggleLike }: BuyCarCardProps)
           <span>2.0L</span>
         </div>
         <div className="buy-card-footer">
-          <span>{car.seller?.city || 'London, UK'}</span>
+          <span>{car.seller?.city || 'Kyiv, Ukraine'}</span>
           <span>{mode === 'rent' ? 'Insurance ready' : oldPrice > priceNumber ? `${formatPrice(String(oldPrice))} old` : 'Just now'}</span>
         </div>
       </div>

@@ -42,6 +42,7 @@ class SellerProfile(models.Model):
     country = models.CharField(max_length=80, blank=True)
     street_address = models.CharField(max_length=160, blank=True)
     state_province = models.CharField(max_length=80, blank=True)
+    avatar_url = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -13,7 +13,7 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: Re
   const [helpfulReviewIds, setHelpfulReviewIds] = useState<number[]>([])
   const average = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
-    : 4.7
+    : 0
 
   function toggleHelpful(reviewId: number) {
     setHelpfulReviewIds((currentIds) => (
@@ -34,15 +34,15 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: Re
         <div>
           <strong>{average.toFixed(1)}</strong>
           <span>****-</span>
-          <p>Based on {Math.max(reviews.length, 103)} reviews</p>
+          <p>Based on {reviews.length} reviews</p>
         </div>
         <div className="rating-bars">
           {[5, 4, 3, 2, 1].map((rating) => {
-            const count = reviews.filter((review) => review.rating === rating).length || (rating === 5 ? 62 : rating === 4 ? 25 : rating === 3 ? 13 : rating === 2 ? 3 : 0)
+            const count = reviews.filter((review) => review.rating === rating).length
             return (
               <p key={rating}>
                 <span>{rating} stars</span>
-                <progress value={count} max="62" />
+                <progress value={count} max={Math.max(reviews.length, 1)} />
                 <b>{count}</b>
               </p>
             )
@@ -56,9 +56,10 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: Re
 
       <button className="leave-review-button" type="button" onClick={startReview}>Leave a review +</button>
       {isLoading && <p className="soft-note">Loading reviews...</p>}
+      {!isLoading && reviews.length === 0 && <p className="soft-note">No reviews yet. Customer reviews will appear after completed deals.</p>}
 
       <div className="review-list">
-        {(reviews.length ? reviews : fallbackReviews).map((review) => (
+        {reviews.map((review) => (
           <article key={review.id} className="review-row">
             <div className="review-avatar">{review.username.slice(0, 1).toUpperCase()}</div>
             <div>
@@ -82,20 +83,5 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: Re
     </section>
   )
 }
-
-const fallbackReviews: CarReview[] = [
-  {
-    id: -1,
-    car: -1,
-    car_title: 'BMW X5 2021',
-    car_image_url: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=500&q=80',
-    user: -1,
-    username: 'James Anderson',
-    rating: 5,
-    text: 'Great experience. The seller was professional and the car was even better than described.',
-    recommend_seller: true,
-    created_at: new Date().toISOString(),
-  },
-]
 
 export default ReviewsPage
