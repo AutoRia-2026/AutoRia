@@ -1254,18 +1254,33 @@ textarea:focus {
   font-weight: 700;
 }
 
-.buy-card-media > button:last-child {
+.buy-card-save {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 25px;
-  height: 25px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(67, 80, 105, 0.86);
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  min-width: 52px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(5, 13, 27, 0.84);
   color: #ffffff;
-  font-size: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
   cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.buy-card-save:hover,
+.buy-card-save:focus-visible {
+  border-color: rgba(255, 255, 255, 0.78);
+  background: #2f56a3;
+  box-shadow: 0 12px 28px rgba(36, 76, 151, 0.35);
+  transform: translateY(-1px);
 }
 
 .buy-card-body {
