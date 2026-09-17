@@ -1129,6 +1129,12 @@ function App() {
 
     setSellMessage('')
     setSellError('')
+
+    if (!sellForm.images.some((image) => image.trim())) {
+      setSellError('Add at least one real vehicle photo before publishing or saving a listing.')
+      return
+    }
+
     setIsSellSaving(true)
 
     try {
