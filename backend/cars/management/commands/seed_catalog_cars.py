@@ -96,7 +96,8 @@ class Command(BaseCommand):
 
         created_count = 0
         for index, data in enumerate(CATALOG_CARS):
-            image_urls = [commons_image(file_name) for file_name in data['images']]
+            primary_image_url = commons_image(data['images'][0])
+            image_urls = [primary_image_url, primary_image_url, primary_image_url]
             description = (
                 f"{data['year']} {data['brand']} {data['model']} with {data['fuel_type']} powertrain, "
                 f"{data['transmission']} transmission, {data['body_type'].lower()} body and verified listing photos."
@@ -117,8 +118,8 @@ class Command(BaseCommand):
                 fuel_type=data['fuel_type'],
                 body_type=data['body_type'],
                 condition=data['condition'],
-                color=data['color'],
-                image_url=image_urls[0],
+                color='',
+                image_url=primary_image_url,
                 description=description,
                 status=Car.STATUS_ACTIVE,
                 is_promoted=index < 5,
