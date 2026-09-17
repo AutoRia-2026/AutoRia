@@ -377,7 +377,18 @@ function App() {
       },
     })
       .then((data) => {
-        if (isCurrent) setRentalBookings(data as RentalBooking[])
+        if (!isCurrent) return
+        if (Array.isArray(data)) {
+          setRentalBookings(data as RentalBooking[])
+          return
+        }
+
+        if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+          setRentalBookings((data as { results: RentalBooking[] }).results)
+          return
+        }
+
+        setRentalBookings([])
       })
       .catch((requestError) => {
         if (isCurrent) showNotice(parseApiError(requestError))
