@@ -79,7 +79,7 @@ function CarDetailPage({
               Book rental
             </button>
           )}
-          <button type="button" aria-label="Like car" onClick={() => toggleLike(car)}>Heart</button>
+          <button type="button" aria-label="Add to favorites" onClick={() => toggleLike(car)}>♡</button>
           <button type="button" aria-label="Share car" onClick={copyShareLink}>Share</button>
         </div>
       </div>
@@ -117,7 +117,7 @@ function CarDetailPage({
 
         <section className="detail-panel features-panel">
           <h2>Features</h2>
-          {features.map((feature) => <span key={feature}>OK {feature}</span>)}
+          {features.map((feature) => <span key={feature}>✓ {feature}</span>)}
         </section>
 
         <section className="detail-panel description-panel">

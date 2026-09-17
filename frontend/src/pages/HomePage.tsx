@@ -62,7 +62,7 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
         <section className="best-discount">
           <h2>Best car discounts</h2>
           <div className="spotlight-car">
-            <button type="button" className="spotlight-side" aria-label="Previous discount" onClick={() => changeDiscount(-1)} />
+            <button type="button" className="spotlight-side" aria-label="Previous discount" onClick={() => changeDiscount(-1)}>‹</button>
             <article>
               <img src={fallbackImage(bestCar)} alt={carTitle(bestCar)} />
               <div className="spotlight-meta">
@@ -77,7 +77,7 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
                 <button type="button" onClick={() => openCar(bestCar)}>Read more</button>
               </div>
             </article>
-            <button type="button" className="spotlight-side next" aria-label="Next discount" onClick={() => changeDiscount(1)} />
+            <button type="button" className="spotlight-side next" aria-label="Next discount" onClick={() => changeDiscount(1)}>›</button>
           </div>
         </section>
       )}

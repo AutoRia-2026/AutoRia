@@ -10,7 +10,7 @@ User = get_user_model()
 class SellerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = SellerProfile
-        fields = ['phone', 'city', 'date_of_birth', 'country', 'street_address', 'state_province']
+        fields = ['phone', 'city', 'date_of_birth', 'country', 'street_address', 'state_province', 'avatar_url']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -28,6 +28,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
     country = serializers.CharField(required=False, allow_blank=True, write_only=True)
     street_address = serializers.CharField(required=False, allow_blank=True, write_only=True)
     state_province = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    avatar_url = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
@@ -42,6 +43,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             'country',
             'street_address',
             'state_province',
+            'avatar_url',
         ]
 
     def validate_username(self, value):
@@ -61,6 +63,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         country = validated_data.pop('country', None)
         street_address = validated_data.pop('street_address', None)
         state_province = validated_data.pop('state_province', None)
+        avatar_url = validated_data.pop('avatar_url', None)
 
         for field, value in validated_data.items():
             setattr(instance, field, value)
@@ -79,6 +82,8 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             profile.street_address = street_address
         if state_province is not None:
             profile.state_province = state_province
+        if avatar_url is not None:
+            profile.avatar_url = avatar_url
         profile.save()
 
         return instance

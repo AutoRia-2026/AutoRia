@@ -1,7 +1,7 @@
 type FooterProps = {
   openSupport: () => void
   openBuy: () => void
-  openError: () => void
+  showNotice: (message: string) => void
 }
 
 const socialLinks = [
@@ -11,7 +11,7 @@ const socialLinks = [
   ['X', 'https://x.com/'],
 ]
 
-function Footer({ openSupport, openBuy, openError }: FooterProps) {
+function Footer({ openSupport, openBuy, showNotice }: FooterProps) {
   return (
     <footer className="site-footer drive-footer">
       <div>
@@ -33,17 +33,17 @@ function Footer({ openSupport, openBuy, openError }: FooterProps) {
       </div>
       <div>
         <h4>Legal</h4>
-        <button type="button" onClick={openError}>Privacy Policy</button>
-        <button type="button" onClick={openError}>Terms of Service</button>
-        <button type="button" onClick={openError}>Cookie Policy</button>
-        <button type="button" onClick={openError}>Refund Policy</button>
+        <button type="button" onClick={() => showNotice('Privacy policy opened')}>Privacy Policy</button>
+        <button type="button" onClick={() => showNotice('Terms of service opened')}>Terms of Service</button>
+        <button type="button" onClick={() => showNotice('Cookie policy opened')}>Cookie Policy</button>
+        <button type="button" onClick={() => showNotice('Refund policy opened')}>Refund Policy</button>
       </div>
       <div>
         <h4>Contact us</h4>
-        <p>1 Mar Street, New York</p>
-        <p>+1 (515) 144-4564</p>
-        <p>support@drivehub.com</p>
-        <p>Mon-Fri 9:00 AM-6:00 PM</p>
+        <p>Kyiv, Ukraine</p>
+        <p>+380 (67) 456-78-90</p>
+        <p>support@drivehub.ua</p>
+        <p>Mon-Fri 9:00-18:00</p>
       </div>
       <p className="newsletter-copy">Newsletter: Stay updated with the latest vehicles and exclusive offers.</p>
       <p className="copyright-copy">2026 DriveHub. All Rights Reserved.</p>

@@ -24,6 +24,7 @@ export type User = {
     country: string
     street_address: string
     state_province: string
+    avatar_url: string
   } | null
 }
 
@@ -43,4 +44,5 @@ export type ProfileForm = {
   country: string
   street_address: string
   state_province: string
+  avatar_url: string
 }

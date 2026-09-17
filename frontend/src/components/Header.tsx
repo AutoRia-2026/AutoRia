@@ -9,7 +9,9 @@ type HeaderProps = {
   openMessages: () => void
   openAuth: () => void
   openProfile: (section?: ProfileSection) => void
-  openError: () => void
+  openSupport: () => void
+  goBack: () => void
+  canGoBack: boolean
   applyBuyTab: (tab: string) => void
 }
 
@@ -21,13 +23,16 @@ function Header({
   openMessages,
   openAuth,
   openProfile,
-  openError,
+  openSupport,
+  goBack,
+  canGoBack,
   applyBuyTab,
 }: HeaderProps) {
   return (
     <header className="buy-header">
       <DriveHubLogo onClick={goHome} />
       <nav aria-label="Primary navigation">
+        {canGoBack && <button type="button" onClick={goBack}>Back</button>}
         <button type="button" onClick={goHome}>Home</button>
         <button type="button" onClick={() => user ? openProfile('edit') : openAuth()}>Profile</button>
         <button type="button" onClick={openMessages}>Messages</button>
@@ -37,7 +42,7 @@ function Header({
       </nav>
       <div className="buy-header-actions">
         <button type="button" onClick={() => user ? openProfile('favorites') : openAuth()} aria-label="Favorites">Fav</button>
-        <button type="button" onClick={openError} aria-label="Help">?</button>
+        <button type="button" onClick={openSupport} aria-label="Help">?</button>
         {user ? (
           <button type="button" onClick={() => openProfile('edit')}>{user.first_name || user.username}</button>
         ) : (

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import BuyCarCard from '../components/BuyCarCard'
 import type { ProfileForm, ProfileSection, User } from '../types/auth'
-import type { Car } from '../types/cars'
+import type { Car, Conversation } from '../types/cars'
 import { fallbackImage, formatMileage, formatPrice } from '../utils/cars'
 
 type ProfilePageProps = {
@@ -16,6 +16,7 @@ type ProfilePageProps = {
   isProfileSaving: boolean
   isFavoritesLoading: boolean
   isListingsLoading: boolean
+  conversations: Conversation[]
   setActiveSection: (value: ProfileSection) => void
   setProfileForm: (value: ProfileForm) => void
   submitProfile: (event: FormEvent<HTMLFormElement>) => void
@@ -50,6 +51,7 @@ function ProfilePage({
   isProfileSaving,
   isFavoritesLoading,
   isListingsLoading,
+  conversations,
   setActiveSection,
   setProfileForm,
   submitProfile,
@@ -61,6 +63,7 @@ function ProfilePage({
   showNotice,
 }: ProfilePageProps) {
   const displayName = profileForm.first_name || user.first_name || user.username
+  const initials = displayName.slice(0, 2).toUpperCase()
   const isEdit = activeSection === 'edit'
   const showProfileBanner = ['favorites', 'notifications', 'history', 'support'].includes(activeSection)
   const [listingStatus, setListingStatus] = useState('all')
@@ -70,7 +73,11 @@ function ProfilePage({
     <section className="account-page">
       <aside className="account-sidebar">
         <div className="account-user">
-          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80" alt={displayName} />
+          {profileForm.avatar_url ? (
+            <img src={profileForm.avatar_url} alt={displayName} />
+          ) : (
+            <div className="account-avatar-fallback" aria-label={displayName}>{initials}</div>
+          )}
           <span>Welcome</span>
           <strong>{displayName}</strong>
         </div>
@@ -148,6 +155,24 @@ function ProfilePage({
                   Email
                   <input type="email" value={profileForm.email} onChange={(event) => setProfileForm({ ...profileForm, email: event.target.value })} required />
                 </label>
+                <label>
+                  Avatar URL
+                  <input type="url" value={profileForm.avatar_url} onChange={(event) => setProfileForm({ ...profileForm, avatar_url: event.target.value })} placeholder="https://..." />
+                </label>
+                <label>
+                  Upload Avatar
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = () => setProfileForm({ ...profileForm, avatar_url: String(reader.result || '') })
+                      reader.readAsDataURL(file)
+                    }}
+                  />
+                </label>
               </div>
 
               {profileMessage && <p className="form-success">{profileMessage}</p>}
@@ -174,9 +199,10 @@ function ProfilePage({
             notificationsRead={notificationsRead}
             setNotificationsRead={setNotificationsRead}
             showNotice={showNotice}
+            conversations={conversations}
           />
         )}
-        {activeSection === 'history' && <HistorySection showNotice={showNotice} />}
+        {activeSection === 'history' && <HistorySection cars={myListings} showNotice={showNotice} />}
         {activeSection === 'listings' && (
           <ListingsSection
             cars={myListings}
@@ -254,17 +280,20 @@ function NotificationsSection({
   notificationsRead,
   setNotificationsRead,
   showNotice,
+  conversations,
 }: {
   notificationsRead: boolean
   setNotificationsRead: (value: boolean) => void
   showNotice: (message: string) => void
+  conversations: Conversation[]
 }) {
-  const today = [
-    ['New message', 'John Smith sent you a message about your BMW X5.', '5 min ago'],
-    ['New offer received', 'You received an offer of $41,500 for your BMW X5.', '34 min ago'],
-    ['New message', 'Hi! Is the BMW X5 still available?', '2 hour ago'],
-  ]
-  const yesterday = [['New message', 'Has the vehicle ever been involved in an accident?', 'Yesterday']]
+  const items = conversations
+    .filter((conversation) => conversation.latest_message)
+    .map((conversation) => [
+      conversation.unread_count > 0 ? 'Unread message' : 'Message',
+      `${conversation.participant_name}: ${conversation.latest_message?.text || 'Conversation opened'}`,
+      new Date(conversation.updated_at).toLocaleString(),
+    ])
 
   return (
     <section className="notifications-section">
@@ -285,8 +314,11 @@ function NotificationsSection({
         </button>
       </div>
 
-      <NotificationGroup title="Today" items={today} muted={notificationsRead} showNotice={showNotice} />
-      <NotificationGroup title="Yesterday" items={yesterday} muted={notificationsRead} showNotice={showNotice} />
+      {items.length > 0 ? (
+        <NotificationGroup title="Messages" items={items} muted={notificationsRead} showNotice={showNotice} />
+      ) : (
+        <p className="soft-note">No notifications yet. New messages and listing activity will appear here.</p>
+      )}
       <p className="no-more-activity">No more activity</p>
     </section>
   )
@@ -309,7 +341,7 @@ function NotificationGroup({
       <div>
         {items.map(([label, text, time]) => (
           <article key={`${label}-${time}`} className={muted ? 'muted' : ''}>
-            <span>{label === 'New offer received' ? 'Tag' : 'Msg'}</span>
+            <span>{label.includes('offer') ? 'Tag' : 'Msg'}</span>
             <div>
               <strong>{label}</strong>
               <p>{text}</p>
@@ -323,13 +355,12 @@ function NotificationGroup({
   )
 }
 
-function HistorySection({ showNotice }: { showNotice: (message: string) => void }) {
-  const today = [
-    ['Listing Published', 'Your BMW X5 listing has been successfully published.', '6 min ago'],
-    ['Offer Accepted', 'You accepted an offer of $42,000 for your BMW X5.', '1 hour ago'],
-    ['Listing Updated', 'You edited the price and description of your BMW X5 listing.', '5 hour ago'],
-  ]
-  const yesterday = [['Listing Viewed', 'Your listing received 45 new views.', 'Yesterday']]
+function HistorySection({ cars, showNotice }: { cars: Car[]; showNotice: (message: string) => void }) {
+  const items = cars.map((car) => [
+    car.status === 'sold' ? 'Listing Sold' : car.status === 'hidden' ? 'Listing Pending' : 'Listing Active',
+    `${car.brand} ${car.model} was listed with ${formatMileage(car.mileage)} mileage for ${formatPrice(car.price)}.`,
+    new Date(car.created_at).toLocaleDateString(),
+  ])
 
   return (
     <section className="history-section">
@@ -337,8 +368,11 @@ function HistorySection({ showNotice }: { showNotice: (message: string) => void 
         <h1>History</h1>
         <p>View your recent activity and track all important actions.</p>
       </div>
-      <NotificationGroup title="Today" items={today} showNotice={showNotice} />
-      <NotificationGroup title="Yesterday" items={yesterday} showNotice={showNotice} />
+      {items.length > 0 ? (
+        <NotificationGroup title="Listings" items={items} showNotice={showNotice} />
+      ) : (
+        <p className="soft-note">No account history yet. Published listings and actions will appear here.</p>
+      )}
       <p className="no-more-activity">No more activity</p>
     </section>
   )
@@ -578,10 +612,10 @@ function SupportSection() {
 
       <article className="support-contact">
         <h2>Contact Support</h2>
-        <p>1 Mar Street, New York</p>
-        <p>+1 (515) 144-4564</p>
-        <p>support@drivehub.com</p>
-        <p>Mon-Fri 9:00 AM-6:00 PM</p>
+        <p>Kyiv, Ukraine</p>
+        <p>+380 (67) 456-78-90</p>
+        <p>support@drivehub.ua</p>
+        <p>Mon-Fri 9:00-18:00</p>
       </article>
     </section>
   )
