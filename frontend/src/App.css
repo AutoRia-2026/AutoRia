@@ -14,6 +14,7 @@ textarea,
 .detail-panel,
 .account-form,
 .auth-card {
+  min-width: 0;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
@@ -356,12 +357,33 @@ textarea:focus {
 
 .detail-topbar > div:last-child {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
   align-items: flex-start;
+  max-width: min(100%, 560px);
 }
 
 .detail-topbar button {
   min-height: 36px;
+}
+
+.detail-topbar .offer-button {
+  border-color: transparent;
+  background: #2d4f9a;
+}
+
+.own-listing-chip {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(56, 212, 134, 0.28);
+  border-radius: 6px;
+  padding: 0 13px;
+  background: rgba(24, 142, 74, 0.16);
+  color: #70e3a5;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .car-hero-panel {
@@ -473,14 +495,9 @@ textarea:focus {
 }
 
 .car-hero-panel p {
-  position: absolute;
-  right: 28px;
-  top: 64px;
-  z-index: 1;
-  width: min(360px, 46%);
+  display: none;
   margin: 0;
   color: #e6edf8;
-  text-align: right;
 }
 
 .car-info-grid {
@@ -524,11 +541,73 @@ textarea:focus {
 }
 
 .features-panel span {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   color: #dce6f6;
+}
+
+.features-panel span::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: #315aa9;
+  box-shadow: 0 0 0 4px rgba(49, 90, 169, 0.16);
 }
 
 .description-panel {
   grid-column: 1 / 2;
+}
+
+.description-panel p {
+  margin-bottom: 16px;
+  color: #dce6f6;
+  line-height: 1.65;
+}
+
+.listing-contact-card {
+  margin-top: 18px;
+  border: 1px solid rgba(127, 148, 184, 0.24);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(9, 18, 34, 0.5);
+}
+
+.listing-contact-card h3 {
+  margin: 0 0 12px;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.listing-contact-card > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.listing-contact-card article {
+  min-width: 0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: rgba(18, 31, 53, 0.82);
+}
+
+.listing-contact-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: #8f9db2;
+  font-size: 11px;
+}
+
+.listing-contact-card strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .review-preview {
@@ -590,6 +669,14 @@ textarea:focus {
 .seller-question p {
   margin: 8px 0 0;
   color: #c8d2e2;
+}
+
+.seller-question .owner-note {
+  margin-top: 14px;
+  border: 1px solid rgba(127, 148, 184, 0.22);
+  border-radius: 7px;
+  padding: 12px 14px;
+  background: rgba(13, 24, 42, 0.72);
 }
 
 .seller-question strong {
@@ -659,10 +746,15 @@ textarea:focus {
 
 .review-row {
   display: grid;
-  grid-template-columns: 60px 220px 1fr 240px 28px;
+  grid-template-columns: 60px minmax(160px, 220px) minmax(0, 1fr) minmax(160px, 240px) 28px;
   gap: 18px;
   align-items: center;
   padding: 18px 22px;
+}
+
+.review-row > div,
+.review-text {
+  min-width: 0;
 }
 
 .review-avatar {
@@ -681,10 +773,14 @@ textarea:focus {
 }
 
 .review-row p,
-.review-row span,
-.review-text button {
+.review-row span {
   margin: 0;
   color: #aeb9cc;
+}
+
+.review-text p {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
 }
 
 .review-row img {
@@ -3072,6 +3168,10 @@ textarea:focus {
   box-shadow: 0 0 0 1px #5279d4;
 }
 
+.account-grid label {
+  min-width: 0;
+}
+
 .avatar-upload-field input {
   position: absolute;
   width: 1px;
@@ -3085,7 +3185,9 @@ textarea:focus {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  min-width: 0;
   min-height: 42px;
+  overflow: hidden;
   border: 1px solid rgba(178, 191, 211, 0.56);
   border-radius: 6px;
   padding: 0 6px 0 12px;
@@ -3095,7 +3197,9 @@ textarea:focus {
 }
 
 .avatar-upload-control span {
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: #aeb9cc;
   text-overflow: ellipsis;
@@ -3104,12 +3208,17 @@ textarea:focus {
 
 .avatar-upload-control strong {
   flex: 0 0 auto;
+  max-width: 46%;
   border-radius: 5px;
   padding: 8px 12px;
   background: #2d4f9a;
   color: #fff;
   font-size: 13px;
   font-weight: 500;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-divider {
@@ -3397,6 +3506,130 @@ textarea:focus {
   color: #d5deeb;
 }
 
+.bookings-section {
+  padding-bottom: 40px;
+}
+
+.booking-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.booking-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) minmax(220px, 280px);
+  gap: 18px;
+  align-items: center;
+  border-radius: 8px;
+  padding: 14px;
+  background: #141f33;
+}
+
+.booking-row img {
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #0b1424;
+}
+
+.booking-main {
+  min-width: 0;
+}
+
+.booking-main > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.booking-main h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-main p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 6px 0 0;
+  color: #c9d4e6;
+  font-size: 12px;
+}
+
+.booking-main span,
+.booking-side span,
+.booking-side em {
+  color: #8f9db2;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.booking-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.booking-status.pending {
+  background: rgba(186, 123, 24, 0.18);
+  color: #f4a51d;
+}
+
+.booking-status.confirmed {
+  background: rgba(24, 142, 74, 0.18);
+  color: #38d486;
+}
+
+.booking-status.cancelled {
+  background: rgba(150, 20, 42, 0.28);
+  color: #ff536c;
+}
+
+.booking-side {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.booking-side strong {
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.booking-side > div {
+  display: flex;
+  gap: 8px;
+}
+
+.booking-side button {
+  min-height: 34px;
+  border: 1px solid rgba(178, 191, 211, 0.34);
+  border-radius: 6px;
+  padding: 0 14px;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.booking-side button:first-child {
+  border-color: transparent;
+  background: #2d4f9a;
+}
+
 .listings-section {
   padding-bottom: 40px;
 }
@@ -3464,8 +3697,8 @@ textarea:focus {
 
 .listing-row {
   display: grid;
-  grid-template-columns: 170px 1fr 300px;
-  gap: 24px;
+  grid-template-columns: 170px minmax(260px, 1fr) minmax(300px, 340px);
+  gap: 18px;
   align-items: center;
   min-height: 110px;
   border-radius: 8px;
@@ -3562,17 +3795,28 @@ textarea:focus {
 .listing-side {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(84px, 1fr) 72px 82px 96px 96px 24px;
-  gap: 10px;
+  grid-template-columns: minmax(82px, 1fr) 86px 86px 24px;
+  gap: 8px;
   align-items: center;
+  justify-items: stretch;
 }
 
-.listing-side > strong {
-  font-size: 20px;
+.listing-side > span {
+  grid-column: 1 / 3;
+  justify-self: end;
   text-align: right;
 }
 
+.listing-side > strong {
+  justify-self: end;
+  font-size: 18px;
+  line-height: 1.1;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .listing-status {
+  grid-column: 3 / 5;
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 12px;
@@ -3597,6 +3841,7 @@ textarea:focus {
 
 .listing-side button {
   height: 34px;
+  min-width: 0;
   border: 1px solid rgba(178, 191, 211, 0.34);
   border-radius: 6px;
   background: transparent;
@@ -3609,7 +3854,7 @@ textarea:focus {
 }
 
 .listing-side .view-details-button {
-  grid-column: span 2;
+  grid-column: 2 / 4;
 }
 
 .listing-side button:last-child {
@@ -3729,11 +3974,23 @@ textarea:focus {
   .listing-toolbar,
   .listing-row,
   .listing-side,
-  .listing-specs {
+  .listing-specs,
+  .booking-row,
+  .booking-side {
     grid-template-columns: 1fr;
   }
 
-  .listing-side > strong {
+  .listing-side > strong,
+  .booking-side {
+    text-align: left;
+    justify-items: stretch;
+  }
+
+  .listing-side > span,
+  .listing-status,
+  .listing-side .view-details-button {
+    grid-column: auto;
+    justify-self: stretch;
     text-align: left;
   }
 
@@ -4017,19 +4274,44 @@ textarea:focus {
   margin-top: 16px;
 }
 
-.rent-toggle {
-  width: fit-content;
-  display: flex !important;
-  grid-template-columns: auto 1fr;
-  align-items: center;
+.listing-mode-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   margin-top: 18px;
-  color: #dce5f4 !important;
 }
 
-.rent-toggle input {
-  width: 16px;
-  min-height: 16px;
-  accent-color: #2d4f9a;
+.listing-mode-control button {
+  min-height: 70px;
+  border: 1px solid rgba(120, 141, 176, 0.42);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(7, 17, 32, 0.72);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.listing-mode-control button.active {
+  border-color: rgba(118, 154, 232, 0.9);
+  background: rgba(45, 79, 154, 0.48);
+  box-shadow: 0 14px 32px rgba(20, 45, 92, 0.24);
+}
+
+.listing-mode-control button:hover {
+  border-color: rgba(210, 221, 240, 0.58);
+  transform: translateY(-1px);
+}
+
+.listing-mode-control span {
+  display: block;
+  margin-top: 6px;
+  color: #b7c3d7;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .rental-grid {
@@ -4295,6 +4577,7 @@ textarea:focus {
 
   .sell-grid,
   .sell-image-grid,
+  .listing-mode-control,
   .messages-layout {
     grid-template-columns: 1fr 1fr;
   }
@@ -4321,7 +4604,8 @@ textarea:focus {
   .sell-actions,
   .sell-steps,
   .sell-grid,
-  .sell-image-grid {
+  .sell-image-grid,
+  .listing-mode-control {
     grid-template-columns: 1fr;
   }
 

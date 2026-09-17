@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { CarReview } from '../types/cars'
 
 type ReviewsPageProps = {
@@ -10,18 +9,9 @@ type ReviewsPageProps = {
 }
 
 function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: ReviewsPageProps) {
-  const [helpfulReviewIds, setHelpfulReviewIds] = useState<number[]>([])
   const average = reviews.length
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
     : 0
-
-  function toggleHelpful(reviewId: number) {
-    setHelpfulReviewIds((currentIds) => (
-      currentIds.includes(reviewId)
-        ? currentIds.filter((id) => id !== reviewId)
-        : [...currentIds, reviewId]
-    ))
-  }
 
   return (
     <section className="reviews-page">
@@ -70,9 +60,6 @@ function ReviewsPage({ reviews, isLoading, startReview, goHome, showNotice }: Re
             <div className="review-text">
               <strong>{'*'.repeat(review.rating)}{'-'.repeat(5 - review.rating)}</strong>
               <p>{review.text}</p>
-              <button type="button" onClick={() => toggleHelpful(review.id)}>
-                Helpful ({(review.recommend_seller ? 6 : 1) + (helpfulReviewIds.includes(review.id) ? 1 : 0)})
-              </button>
             </div>
             <img src={review.car_image_url} alt={review.car_title} />
             <button type="button" aria-label="Review menu" onClick={() => showNotice('Review actions opened')}>...</button>

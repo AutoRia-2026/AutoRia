@@ -43,6 +43,17 @@ function SellPage({
     setForm({ ...form, images })
   }
 
+  function setListingMode(isAvailableForRent: boolean) {
+    setForm({
+      ...form,
+      is_available_for_rent: isAvailableForRent,
+      rent_price_per_day: isAvailableForRent ? form.rent_price_per_day : '',
+      rent_price_per_week: isAvailableForRent ? form.rent_price_per_week : '',
+      rent_deposit: isAvailableForRent ? form.rent_deposit : '',
+      minimum_rent_days: isAvailableForRent ? form.minimum_rent_days || '1' : '1',
+    })
+  }
+
   function readImageFile(file: File) {
     return new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
@@ -209,10 +220,24 @@ function SellPage({
                 <input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} placeholder="youremail@gmail.com" />
               </label>
             </div>
-            <label className="rent-toggle">
-              <input type="checkbox" checked={form.is_available_for_rent} onChange={(event) => updateField('is_available_for_rent', event.target.checked)} />
-              Also make this car available for rent
-            </label>
+            <div className="listing-mode-control" role="group" aria-label="Listing type">
+              <button
+                type="button"
+                className={!form.is_available_for_rent ? 'active' : ''}
+                onClick={() => setListingMode(false)}
+              >
+                Sell only
+                <span>Buyers can contact you and make offers.</span>
+              </button>
+              <button
+                type="button"
+                className={form.is_available_for_rent ? 'active' : ''}
+                onClick={() => setListingMode(true)}
+              >
+                Sell + rent
+                <span>Show this car on the rent page too.</span>
+              </button>
+            </div>
             {form.is_available_for_rent && (
               <div className="sell-grid rental-grid">
                 <label>

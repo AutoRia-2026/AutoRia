@@ -650,13 +650,18 @@ class SellerProfileTests(APITestCase):
 
 class CarCommentTests(APITestCase):
     def test_authenticated_user_can_create_comment(self):
+        seller = get_user_model().objects.create_user(
+            username='commentseller',
+            email='commentseller@example.com',
+            password='StrongPass123',
+        )
         user = get_user_model().objects.create_user(
             username='commentuser',
             email='comment@example.com',
             password='StrongPass123',
         )
         car = Car.objects.create(
-            owner=user,
+            owner=seller,
             brand='BMW',
             model='M4',
             year=2023,
@@ -676,6 +681,33 @@ class CarCommentTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(CarComment.objects.count(), 1)
         self.assertEqual(response.data['text'], 'Is this car still available?')
+
+    def test_owner_cannot_comment_on_own_car(self):
+        user = get_user_model().objects.create_user(
+            username='commentownerblock',
+            email='commentownerblock@example.com',
+            password='StrongPass123',
+        )
+        car = Car.objects.create(
+            owner=user,
+            brand='BMW',
+            model='X5',
+            year=2023,
+            mileage=25000,
+            price='78000.00',
+            transmission='automatic',
+            fuel_type='diesel',
+        )
+
+        self.client.force_authenticate(user=user)
+        response = self.client.post(
+            f'/api/cars/{car.id}/comments/',
+            {'text': 'Can I ask myself a question?'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(CarComment.objects.count(), 0)
 
     def test_car_detail_includes_comments(self):
         user = get_user_model().objects.create_user(
@@ -704,13 +736,18 @@ class CarCommentTests(APITestCase):
 
 class CarReviewTests(APITestCase):
     def setUp(self):
+        self.seller = get_user_model().objects.create_user(
+            username='reviewseller',
+            email='reviewseller@example.com',
+            password='StrongPass123',
+        )
         self.user = get_user_model().objects.create_user(
             username='reviewuser',
             email='review@example.com',
             password='StrongPass123',
         )
         self.car = Car.objects.create(
-            owner=self.user,
+            owner=self.seller,
             brand='Porsche',
             model='911 GT3 RS',
             year=2023,
@@ -732,6 +769,18 @@ class CarReviewTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(CarReview.objects.count(), 1)
         self.assertEqual(response.data['rating'], 5)
+
+    def test_owner_cannot_review_own_car(self):
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.post(
+            f'/api/cars/{self.car.id}/reviews/',
+            {'rating': 5, 'text': 'My own listing is perfect.', 'recommend_seller': True},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(CarReview.objects.count(), 0)
 
     def test_user_cannot_review_same_car_twice(self):
         self.client.force_authenticate(user=self.user)
@@ -976,6 +1025,26 @@ class RentalBookingTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(booking.status, RentalBooking.STATUS_CONFIRMED)
+
+    def test_seller_can_cancel_booking(self):
+        booking = RentalBooking.objects.create(
+            car=self.car,
+            renter=self.renter,
+            seller=self.seller,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            pickup_location='Kyiv Center',
+            total_price='540.00',
+            deposit='700.00',
+        )
+        self.client.force_authenticate(user=self.seller)
+
+        response = self.client.post(f'/api/cars/bookings/{booking.id}/cancel/')
+
+        booking.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(booking.status, RentalBooking.STATUS_CANCELLED)
 
     def test_renter_cannot_confirm_booking(self):
         booking = RentalBooking.objects.create(
