@@ -32,7 +32,7 @@ function Header({
     <header className="buy-header">
       <DriveHubLogo onClick={goHome} />
       <nav aria-label="Primary navigation">
-        {canGoBack && <button type="button" onClick={goBack}>Back</button>}
+        {canGoBack && <button type="button" className="back-nav-button" onClick={goBack}>Back</button>}
         <button type="button" onClick={goHome}>Home</button>
         <button type="button" onClick={() => user ? openProfile('edit') : openAuth()}>Profile</button>
         <button type="button" onClick={openMessages}>Messages</button>

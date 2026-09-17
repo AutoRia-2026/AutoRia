@@ -75,7 +75,7 @@ class Command(BaseCommand):
                 'is_active': True,
             },
         )
-        seller.set_unusable_password()
+        seller.set_password('DriveHubSeller123!')
         seller.save()
         SellerProfile.objects.update_or_create(
             user=seller,

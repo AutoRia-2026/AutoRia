@@ -19,26 +19,31 @@ const faqItems = [
   },
   {
     question: 'Can I save cars for later?',
-    answer: 'Yes. Use the heart button on any vehicle card and it will appear in your favorites inside your profile.',
+    answer: 'Yes. Use the save button on any vehicle card and it will appear in your favorites inside your profile.',
   },
   {
     question: 'How do I contact a seller?',
-    answer: 'Open a vehicle page and use Contact Seller to start the buying conversation from the listing.',
+    answer: 'Open a vehicle page and use Contact Seller. The seller can answer from Messages after signing in to their account.',
   },
 ]
 
 function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePageProps) {
   const [activeDiscountIndex, setActiveDiscountIndex] = useState(0)
-  const [openFaqIndex, setOpenFaqIndex] = useState(0)
-  const bestCar = cars[activeDiscountIndex % Math.max(cars.length, 1)]
+  const [openFaqIndex, setOpenFaqIndex] = useState(-1)
+  const discountCars = cars.filter((car) => car.is_promoted).slice(0, 4)
+  const bestCar = discountCars[activeDiscountIndex % Math.max(discountCars.length, 1)]
   const previewCars = cars.slice(0, 9)
 
   function changeDiscount(direction: -1 | 1) {
-    if (!cars.length) {
+    if (!discountCars.length) {
       return
     }
 
-    setActiveDiscountIndex((currentIndex) => (currentIndex + direction + cars.length) % cars.length)
+    setActiveDiscountIndex((currentIndex) => (currentIndex + direction + discountCars.length) % discountCars.length)
+  }
+
+  function discountPercent(car: Car) {
+    return 8 + (car.id % 4) * 2
   }
 
   return (
@@ -62,9 +67,12 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
         <section className="best-discount">
           <h2>Best car discounts</h2>
           <div className="spotlight-car">
-            <button type="button" className="spotlight-side" aria-label="Previous discount" onClick={() => changeDiscount(-1)}>‹</button>
+            <button type="button" className="spotlight-side" aria-label="Previous discount" onClick={() => changeDiscount(-1)}>{'<'}</button>
             <article>
-              <img src={fallbackImage(bestCar)} alt={carTitle(bestCar)} />
+              <button type="button" className="spotlight-image-button" onClick={() => openCar(bestCar)}>
+                <img src={fallbackImage(bestCar)} alt={carTitle(bestCar)} />
+              </button>
+              <strong className="discount-badge">-{discountPercent(bestCar)}%</strong>
               <div className="spotlight-meta">
                 <span>{bestCar.brand}</span>
                 <span>{bestCar.fuel_type}</span>
@@ -72,12 +80,12 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
                 <span>{bestCar.year}</span>
               </div>
               <div className="spotlight-actions">
-                <span>{formatPrice(String(Math.round(Number(bestCar.price) * 1.12)))}</span>
+                <span>{formatPrice(String(Math.round(Number(bestCar.price) / (1 - discountPercent(bestCar) / 100))))}</span>
                 <strong>{formatPrice(bestCar.price)}</strong>
                 <button type="button" onClick={() => openCar(bestCar)}>Read more</button>
               </div>
             </article>
-            <button type="button" className="spotlight-side next" aria-label="Next discount" onClick={() => changeDiscount(1)}>›</button>
+            <button type="button" className="spotlight-side next" aria-label="Next discount" onClick={() => changeDiscount(1)}>{'>'}</button>
           </div>
         </section>
       )}
@@ -116,7 +124,7 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
             <article key={item.question} className={openFaqIndex === index ? 'faq-item open' : 'faq-item'}>
               <button type="button" onClick={() => setOpenFaqIndex(openFaqIndex === index ? -1 : index)}>
                 {item.question}
-                <span>v</span>
+                <span>{openFaqIndex === index ? '-' : '+'}</span>
               </button>
               {openFaqIndex === index && <p>{item.answer}</p>}
             </article>

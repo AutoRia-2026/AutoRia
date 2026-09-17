@@ -72,7 +72,7 @@ function App() {
   const [activeFilter, setActiveFilter] = useState('ending')
   const [activeBuyTab, setActiveBuyTab] = useState('All cars')
   const [pageUrl, setPageUrl] = useState<string | null>(null)
-  const [lastCatalogPage, setLastCatalogPage] = useState<'buy' | 'rent'>('buy')
+  const [detailReturnPage, setDetailReturnPage] = useState<Page>('home')
   const [refreshIndex, setRefreshIndex] = useState(0)
   const [notice, setNotice] = useState('')
   const [profileSection, setProfileSection] = useState<ProfileSection>('edit')
@@ -421,7 +421,7 @@ function App() {
     }
 
     if (page === 'detail') {
-      setPage(lastCatalogPage)
+      setPage(detailReturnPage)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
@@ -617,8 +617,8 @@ function App() {
   }
 
   async function openCar(car: Car) {
-    if (page === 'rent' || page === 'buy') {
-      setLastCatalogPage(page)
+    if (page !== 'detail') {
+      setDetailReturnPage(page)
     }
     setPage('detail')
     setBidMessage('')

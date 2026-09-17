@@ -23,7 +23,7 @@ function BuyCarCard({ car, mode = 'buy', openCar, toggleLike }: BuyCarCardProps)
         </button>
         <span>Trusted Seller</span>
         <button type="button" aria-label="Add to favorites" onClick={() => toggleLike(car)}>
-          ♡
+          Save
         </button>
       </div>
       <div className="buy-card-body">
