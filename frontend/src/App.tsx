@@ -91,6 +91,8 @@ function App() {
   const [messageText, setMessageText] = useState('')
   const [isConversationsLoading, setIsConversationsLoading] = useState(false)
   const [isMessageSending, setIsMessageSending] = useState(false)
+  const [rentalBookings, setRentalBookings] = useState<RentalBooking[]>([])
+  const [isBookingsLoading, setIsBookingsLoading] = useState(false)
 
   const [bidOpen, setBidOpen] = useState(false)
   const [bidAmount, setBidAmount] = useState('')
@@ -139,7 +141,7 @@ function App() {
     full_name: '',
     city: '',
     email: '',
-    is_available_for_rent: true,
+    is_available_for_rent: false,
     rent_price_per_day: '',
     rent_price_per_week: '',
     rent_deposit: '',
@@ -360,6 +362,34 @@ function App() {
       isCurrent = false
     }
   }, [page, profileSection, token])
+
+  useEffect(() => {
+    if (!token || page !== 'profile' || profileSection !== 'bookings') {
+      return
+    }
+
+    let isCurrent = true
+    setIsBookingsLoading(true)
+
+    apiRequest('/cars/bookings/', {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    })
+      .then((data) => {
+        if (isCurrent) setRentalBookings(data as RentalBooking[])
+      })
+      .catch((requestError) => {
+        if (isCurrent) showNotice(parseApiError(requestError))
+      })
+      .finally(() => {
+        if (isCurrent) setIsBookingsLoading(false)
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [page, profileSection, refreshIndex, token])
 
   function showNotice(text: string) {
     setNotice(text)
@@ -643,6 +673,13 @@ function App() {
   function startReview() {
     if (!token) {
       openAuth('login')
+      return
+    }
+
+    const car = selectedCar || cars[0]
+
+    if (car?.owner && user?.id === car.owner) {
+      showNotice('You cannot review your own listing')
       return
     }
 
@@ -1008,10 +1045,10 @@ function App() {
     }
   }
 
-  async function contactSeller(car: Car) {
+  async function openConversationWithSeller(car: Car, text = '', notice = 'Conversation opened') {
     if (!token) {
       openAuth('login')
-      return
+      return null
     }
 
     try {
@@ -1022,6 +1059,7 @@ function App() {
         },
         body: JSON.stringify({
           car: car.id,
+          text,
         }),
       })) as Conversation
 
@@ -1032,10 +1070,43 @@ function App() {
       setActiveConversation(conversation)
       setMessageText('')
       setPage('messages')
-      showNotice('Conversation opened')
+      showNotice(notice)
+      return conversation
+    } catch (requestError) {
+      showNotice(parseApiError(requestError))
+      return null
+    }
+  }
+
+  async function updateBookingStatus(booking: RentalBooking, action: 'confirm' | 'cancel') {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    try {
+      const updatedBooking = (await apiRequest(`/cars/bookings/${booking.id}/${action}/`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token}`,
+        },
+      })) as RentalBooking
+
+      setRentalBookings((currentBookings) => (
+        currentBookings.map((currentBooking) => currentBooking.id === updatedBooking.id ? updatedBooking : currentBooking)
+      ))
+      showNotice(action === 'confirm' ? 'Booking confirmed' : 'Booking cancelled')
     } catch (requestError) {
       showNotice(parseApiError(requestError))
     }
+  }
+
+  async function contactSeller(car: Car) {
+    await openConversationWithSeller(
+      car,
+      `Hello, I am interested in ${carTitle(car)}. Is it still available?`,
+      'Conversation opened',
+    )
   }
 
   function openBooking(car: Car) {
@@ -1055,6 +1126,23 @@ function App() {
     setBookingOpen(true)
   }
 
+  function openPurchaseOffer(car: Car) {
+    if (!token) {
+      openAuth('login')
+      return
+    }
+
+    if (car.owner && user?.id === car.owner) {
+      showNotice('You cannot buy your own listing')
+      return
+    }
+
+    setSelectedCar(car)
+    setBidAmount(String(Math.round(Number(car.price))))
+    setBidMessage('')
+    setBidOpen(true)
+  }
+
   function resetSellForm() {
     setSellForm({
       brand: '',
@@ -1072,7 +1160,7 @@ function App() {
       full_name: user ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username : '',
       city: user?.seller_profile?.city || '',
       email: user?.email || '',
-      is_available_for_rent: true,
+      is_available_for_rent: false,
       rent_price_per_day: '',
       rent_price_per_week: '',
       rent_deposit: '',
@@ -1090,13 +1178,6 @@ function App() {
       .map((image) => image.trim())
       .filter(Boolean)
       .map((image_url, position) => ({ image_url, position }))
-    const descriptionParts = [
-      sellForm.description.trim(),
-      sellForm.phone.trim() ? `Phone: ${sellForm.phone.trim()}` : '',
-      sellForm.full_name.trim() ? `Contact: ${sellForm.full_name.trim()}` : '',
-      sellForm.city.trim() ? `City: ${sellForm.city.trim()}` : '',
-      sellForm.email.trim() ? `Email: ${sellForm.email.trim()}` : '',
-    ].filter(Boolean)
 
     return {
       brand: sellForm.brand,
@@ -1110,13 +1191,13 @@ function App() {
       condition: sellForm.condition,
       color: sellForm.color,
       image_url: images[0]?.image_url || '',
-      description: descriptionParts.join('\n'),
+      description: sellForm.description.trim(),
       status,
       is_available_for_rent: sellForm.is_available_for_rent,
-      rent_price_per_day: sellForm.rent_price_per_day ? cleanNumber(sellForm.rent_price_per_day) : null,
-      rent_price_per_week: sellForm.rent_price_per_week ? cleanNumber(sellForm.rent_price_per_week) : null,
-      rent_deposit: sellForm.rent_deposit ? cleanNumber(sellForm.rent_deposit) : null,
-      minimum_rent_days: Number(cleanNumber(sellForm.minimum_rent_days || '1')),
+      rent_price_per_day: sellForm.is_available_for_rent && sellForm.rent_price_per_day ? cleanNumber(sellForm.rent_price_per_day) : null,
+      rent_price_per_week: sellForm.is_available_for_rent && sellForm.rent_price_per_week ? cleanNumber(sellForm.rent_price_per_week) : null,
+      rent_deposit: sellForm.is_available_for_rent && sellForm.rent_deposit ? cleanNumber(sellForm.rent_deposit) : null,
+      minimum_rent_days: sellForm.is_available_for_rent ? Number(cleanNumber(sellForm.minimum_rent_days || '1')) : 1,
       images,
     }
   }
@@ -1181,6 +1262,11 @@ function App() {
     }
 
     if (!selectedCar || !commentText.trim()) {
+      return
+    }
+
+    if (selectedCar.owner && user?.id === selectedCar.owner) {
+      showNotice('You cannot ask a question on your own listing')
       return
     }
 
@@ -1263,6 +1349,11 @@ function App() {
       return
     }
 
+    if (car.owner && user?.id === car.owner) {
+      showNotice('You cannot review your own listing')
+      return
+    }
+
     setIsReviewSending(true)
 
     try {
@@ -1295,7 +1386,7 @@ function App() {
     }
   }
 
-  function submitBid(event: FormEvent<HTMLFormElement>) {
+  async function submitBid(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!token) {
@@ -1310,15 +1401,22 @@ function App() {
 
     const numericBid = Number(bidAmount)
 
-    if (!Number.isFinite(numericBid) || numericBid <= Number(selectedCar.price)) {
-      setBidMessage(`Bid must be higher than ${formatPrice(selectedCar.price)}`)
-      setBidOpen(false)
+    if (!Number.isFinite(numericBid) || numericBid <= 0) {
+      setBidMessage('Enter a valid offer amount')
       return
     }
 
-    setBidOpen(false)
-    setBidMessage(`Bid ${formatPrice(bidAmount)} submitted`)
-    setBidAmount('')
+    const conversation = await openConversationWithSeller(
+      selectedCar,
+      `Purchase offer for ${carTitle(selectedCar)}: ${formatPrice(bidAmount)}. I would like to discuss buying this vehicle.`,
+      'Purchase offer sent to seller',
+    )
+
+    if (conversation) {
+      setBidOpen(false)
+      setBidMessage(`Offer ${formatPrice(bidAmount)} sent to seller`)
+      setBidAmount('')
+    }
   }
 
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
@@ -1353,14 +1451,23 @@ function App() {
         }),
       })) as RentalBooking
 
+      const conversation = await openConversationWithSeller(
+        selectedCar,
+        `Rental request for ${booking.car_title}: ${booking.start_date} to ${booking.end_date}, pickup: ${booking.pickup_location}, dropoff: ${booking.dropoff_location || booking.pickup_location}. Total: ${formatPrice(booking.total_price)}. Please confirm availability.`,
+        'Rental request sent to seller',
+      )
+
       setBookingMessage(`Booking request sent. Total: ${formatPrice(booking.total_price)}`)
-      showNotice('Rental booking request sent')
+      setRentalBookings((currentBookings) => [booking, ...currentBookings.filter((item) => item.id !== booking.id)])
       setBookingForm({
         start_date: '',
         end_date: '',
         pickup_location: '',
         dropoff_location: '',
       })
+      if (conversation) {
+        setBookingOpen(false)
+      }
     } catch (requestError) {
       setBookingError(parseApiError(requestError))
     } finally {
@@ -1421,20 +1528,21 @@ function App() {
             x
           </button>
           <form className="auth-content compact-content" onSubmit={submitBid}>
-            <h1>{carTitle(selectedCar)}</h1>
-            <p className="modal-copy">Current price: {formatPrice(selectedCar.price)}</p>
+            <h1>Make offer</h1>
+            <p className="modal-copy">{carTitle(selectedCar)} · asking price {formatPrice(selectedCar.price)}</p>
             <label>
-              Your bid
+              Your offer
               <input
                 type="text"
                 inputMode="numeric"
                 value={bidAmount}
                 onChange={(event) => setBidAmount(event.target.value)}
-                placeholder="25000"
+                placeholder={String(Math.round(Number(selectedCar.price)))}
                 required
               />
             </label>
-            <button className="primary-button" type="submit">Make a bid</button>
+            {bidMessage && <p className="form-error">{bidMessage}</p>}
+            <button className="primary-button" type="submit">Send offer to seller</button>
           </form>
         </section>
       </div>
@@ -1550,6 +1658,8 @@ function App() {
           isProfileSaving={isProfileSaving}
           isFavoritesLoading={isFavoritesLoading}
           isListingsLoading={isListingsLoading}
+          rentalBookings={rentalBookings}
+          isBookingsLoading={isBookingsLoading}
           setActiveSection={setProfileSection}
           setProfileForm={setProfileForm}
           submitProfile={submitProfile}
@@ -1558,6 +1668,7 @@ function App() {
           toggleLike={toggleLike}
           promoteListing={promoteListing}
           updateListing={updateListing}
+          updateBookingStatus={updateBookingStatus}
           showNotice={showNotice}
           conversations={conversations}
         />
@@ -1571,7 +1682,7 @@ function App() {
           commentText={commentText}
           isCommentSending={isCommentSending}
           setCommentText={setCommentText}
-          setBidOpen={setBidOpen}
+          openPurchaseOffer={openPurchaseOffer}
           openBooking={openBooking}
           submitComment={submitComment}
           toggleLike={toggleLike}
@@ -1579,6 +1690,7 @@ function App() {
           openCar={openCar}
           openReviews={openReviews}
           startReview={startReview}
+          currentUserId={user?.id || null}
           showNotice={showNotice}
         />
       ) : page === 'messages' && user ? (

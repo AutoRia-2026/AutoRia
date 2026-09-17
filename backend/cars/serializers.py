@@ -279,6 +279,12 @@ class CarSerializer(serializers.ModelSerializer):
             if value is not None and value <= 0:
                 raise serializers.ValidationError({field: 'Rental amounts must be greater than 0.'})
 
+        if attrs.get('is_available_for_rent') is False:
+            attrs['rent_price_per_day'] = None
+            attrs['rent_price_per_week'] = None
+            attrs['rent_deposit'] = None
+            attrs['minimum_rent_days'] = 1
+
         return attrs
 
     def update(self, instance, validated_data):

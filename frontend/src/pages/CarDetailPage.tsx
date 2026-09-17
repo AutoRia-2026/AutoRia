@@ -11,7 +11,7 @@ type CarDetailPageProps = {
   commentText: string
   isCommentSending: boolean
   setCommentText: (value: string) => void
-  setBidOpen: (value: boolean) => void
+  openPurchaseOffer: (car: Car) => void
   openBooking: (car: Car) => void
   submitComment: (event: FormEvent<HTMLFormElement>) => void
   toggleLike: (car: Car) => void
@@ -19,17 +19,61 @@ type CarDetailPageProps = {
   openCar: (car: Car) => void
   openReviews: () => void
   startReview: () => void
+  currentUserId: number | null
   showNotice: (message: string) => void
 }
 
-const features = [
-  'Leather Seats',
-  'Navigation System',
-  'Apple CarPlay',
-  'Android Auto',
-  'Adaptive Cruise Control',
-  'Parking Sensors',
-]
+const contactLabels = ['Phone', 'Contact', 'City', 'Email'] as const
+
+function titleCase(value: string) {
+  return value
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
+function buildFeatureList(car: Car) {
+  return [
+    `${titleCase(car.transmission)} transmission`,
+    `${titleCase(car.fuel_type)} powertrain`,
+    car.body_type ? `${titleCase(car.body_type)} body` : '',
+    car.condition ? `${titleCase(car.condition)} condition` : '',
+    car.mileage <= 50000 ? 'Low mileage for its year' : 'Documented mileage',
+    car.is_available_for_rent ? `Rental available from ${car.minimum_rent_days} day${car.minimum_rent_days === 1 ? '' : 's'}` : 'Available for purchase',
+  ].filter(Boolean)
+}
+
+function splitDescriptionAndContacts(car: Car) {
+  const contacts = new Map<string, string>()
+  const contactPattern = /(Phone|Contact|City|Email):\s*(.*?)(?=\s+(?:Phone|Contact|City|Email):|$)/gi
+  let description = (car.description || '')
+    .replace(contactPattern, (_match, label: string, value: string) => {
+      contacts.set(label.toLowerCase(), value.trim())
+      return ''
+    })
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  if (!description) {
+    description = `${carTitle(car)} is listed in verified condition with checked mileage, clean seller profile and marketplace-ready documents.`
+  }
+
+  if (car.seller) {
+    const sellerName = [car.seller.first_name, car.seller.last_name].filter(Boolean).join(' ') || car.seller.username
+    if (sellerName) contacts.set('contact', contacts.get('contact') || sellerName)
+    if (car.seller.phone) contacts.set('phone', contacts.get('phone') || car.seller.phone)
+    if (car.seller.city) contacts.set('city', contacts.get('city') || car.seller.city)
+    if (car.seller.email) contacts.set('email', contacts.get('email') || car.seller.email)
+  }
+
+  return {
+    description,
+    contacts: contactLabels
+      .map((label) => ({ label, value: contacts.get(label.toLowerCase()) || '' }))
+      .filter((contact) => contact.value),
+  }
+}
 
 function CarDetailPage({
   car,
@@ -38,7 +82,7 @@ function CarDetailPage({
   commentText,
   isCommentSending,
   setCommentText,
-  setBidOpen,
+  openPurchaseOffer,
   openBooking,
   submitComment,
   toggleLike,
@@ -46,12 +90,16 @@ function CarDetailPage({
   openCar,
   openReviews,
   startReview,
+  currentUserId,
   showNotice,
 }: CarDetailPageProps) {
   const reviews = car.reviews || []
   const firstReview = reviews[0]
+  const isOwnListing = Boolean(currentUserId && car.owner === currentUserId)
   const shareUrl = `${window.location.origin}${window.location.pathname}#car-${car.id}`
   const galleryImages = car.images?.length ? car.images.map((image) => image.image_url) : [fallbackImage(car)]
+  const carFeatures = buildFeatureList(car)
+  const listingDetails = splitDescriptionAndContacts(car)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
 
   useEffect(() => {
@@ -78,8 +126,15 @@ function CarDetailPage({
           <p>{car.year} / {formatMileage(car.mileage)} / {car.fuel_type} / {car.transmission}</p>
         </div>
         <div>
-          <button type="button" onClick={() => contactSeller(car)}>Contact Seller</button>
-          {car.is_available_for_rent && <button type="button" onClick={() => openBooking(car)}>Book rental</button>}
+          {isOwnListing ? (
+            <span className="own-listing-chip">Your listing</span>
+          ) : (
+            <>
+              <button type="button" className="offer-button" onClick={() => openPurchaseOffer(car)}>Make offer</button>
+              <button type="button" onClick={() => contactSeller(car)}>Contact Seller</button>
+              {car.is_available_for_rent && <button type="button" onClick={() => openBooking(car)}>Book rental</button>}
+            </>
+          )}
           <button type="button" aria-label="Add to favorites" onClick={() => toggleLike(car)}>Save</button>
           <button type="button" aria-label="Share car" onClick={copyShareLink}>Share</button>
         </div>
@@ -126,7 +181,6 @@ function CarDetailPage({
           <article><strong>{car.brand}</strong><span>Brand</span></article>
           <article><strong>{car.fuel_type}</strong><span>Fuel type</span></article>
         </div>
-        <p>{car.description || 'Verified marketplace listing with clear technical data, seller details and available vehicle history.'}</p>
       </section>
 
       {bidMessage && <p className="inline-success">{bidMessage}</p>}
@@ -152,12 +206,25 @@ function CarDetailPage({
 
         <section className="detail-panel features-panel">
           <h2>Features</h2>
-          {features.map((feature) => <span key={feature}>OK {feature}</span>)}
+          {carFeatures.map((feature) => <span key={feature}>{feature}</span>)}
         </section>
 
         <section className="detail-panel description-panel">
           <h2>Description</h2>
-          <p>{car.description || `${carTitle(car)} is listed in verified condition with checked mileage, clean seller profile and marketplace-ready documents.`}</p>
+          <p>{listingDetails.description}</p>
+          {listingDetails.contacts.length > 0 && (
+            <div className="listing-contact-card">
+              <h3>Seller contacts</h3>
+              <div>
+                {listingDetails.contacts.map((contact) => (
+                  <article key={contact.label}>
+                    <span>{contact.label}</span>
+                    <strong>{contact.value}</strong>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="detail-panel review-preview">
@@ -174,8 +241,8 @@ function CarDetailPage({
           ) : (
             <article>
               <strong>No reviews yet</strong>
-              <p>Be the first to describe your buying experience.</p>
-              <button type="button" onClick={startReview}>Leave a review</button>
+              <p>{isOwnListing ? 'Reviews from buyers will appear here after deals.' : 'Be the first to describe your buying experience.'}</p>
+              {!isOwnListing && <button type="button" onClick={startReview}>Leave a review</button>}
             </article>
           )}
         </section>
@@ -186,12 +253,16 @@ function CarDetailPage({
           <h2>Ask seller a question</h2>
           <span>{(car.comments || []).length} comments</span>
         </div>
-        <form onSubmit={submitComment}>
-          <input value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Ask about condition, service history or documents" />
-          <button type="submit" disabled={isCommentSending || !commentText.trim()}>
-            {isCommentSending ? 'Sending...' : 'Send'}
-          </button>
-        </form>
+        {isOwnListing ? (
+          <p className="owner-note">Buyer questions about this listing will appear here.</p>
+        ) : (
+          <form onSubmit={submitComment}>
+            <input value={commentText} onChange={(event) => setCommentText(event.target.value)} placeholder="Ask about condition, service history or documents" />
+            <button type="submit" disabled={isCommentSending || !commentText.trim()}>
+              {isCommentSending ? 'Sending...' : 'Send'}
+            </button>
+          </form>
+        )}
         {(car.comments || []).slice(0, 3).map((comment: CarComment) => (
           <p key={comment.id}><strong>{comment.username}</strong>{comment.text}</p>
         ))}
@@ -200,7 +271,7 @@ function CarDetailPage({
       <section className="might-like">
         <div className="section-row">
           <h2>You also might like</h2>
-          <button type="button" onClick={() => setBidOpen(true)}>Place Bid</button>
+          <button type="button" onClick={() => openPurchaseOffer(car)}>Make offer</button>
         </div>
         <div className="related-strip">
           {relatedCars.slice(0, 3).map((relatedCar) => (

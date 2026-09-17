@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import BuyCarCard from '../components/BuyCarCard'
 import type { ProfileForm, ProfileSection, User } from '../types/auth'
-import type { Car, Conversation } from '../types/cars'
+import type { Car, Conversation, RentalBooking } from '../types/cars'
 import { fallbackImage, formatMileage, formatPrice } from '../utils/cars'
 
 type ProfilePageProps = {
@@ -17,6 +17,8 @@ type ProfilePageProps = {
   isFavoritesLoading: boolean
   isListingsLoading: boolean
   conversations: Conversation[]
+  rentalBookings: RentalBooking[]
+  isBookingsLoading: boolean
   setActiveSection: (value: ProfileSection) => void
   setProfileForm: (value: ProfileForm) => void
   submitProfile: (event: FormEvent<HTMLFormElement>) => void
@@ -25,6 +27,7 @@ type ProfilePageProps = {
   toggleLike: (car: Car) => void
   promoteListing: (car: Car) => void
   updateListing: (car: Car, payload: Partial<Pick<Car, 'price' | 'description' | 'status'>>) => void
+  updateBookingStatus: (booking: RentalBooking, action: 'confirm' | 'cancel') => void
   showNotice: (message: string) => void
 }
 
@@ -34,6 +37,7 @@ const menuItems: { label: string; section: ProfileSection }[] = [
   { label: 'Notifications', section: 'notifications' },
   { label: 'History', section: 'history' },
   { label: 'My Listings', section: 'listings' },
+  { label: 'Bookings', section: 'bookings' },
   { label: 'Settings', section: 'settings' },
   { label: 'Support', section: 'support' },
 ]
@@ -52,6 +56,8 @@ function ProfilePage({
   isFavoritesLoading,
   isListingsLoading,
   conversations,
+  rentalBookings,
+  isBookingsLoading,
   setActiveSection,
   setProfileForm,
   submitProfile,
@@ -60,12 +66,13 @@ function ProfilePage({
   toggleLike,
   promoteListing,
   updateListing,
+  updateBookingStatus,
   showNotice,
 }: ProfilePageProps) {
   const displayName = profileForm.first_name || user.first_name || user.username
   const initials = displayName.slice(0, 2).toUpperCase()
   const isEdit = activeSection === 'edit'
-  const showProfileBanner = ['favorites', 'notifications', 'history', 'support'].includes(activeSection)
+  const showProfileBanner = ['favorites', 'notifications', 'history', 'bookings', 'support'].includes(activeSection)
   const [listingStatus, setListingStatus] = useState('all')
   const [notificationsRead, setNotificationsRead] = useState(false)
   const [avatarFileName, setAvatarFileName] = useState('')
@@ -219,6 +226,14 @@ function ProfilePage({
             promoteListing={promoteListing}
             updateListing={updateListing}
             showNotice={showNotice}
+          />
+        )}
+        {activeSection === 'bookings' && (
+          <BookingsSection
+            user={user}
+            bookings={rentalBookings}
+            isLoading={isBookingsLoading}
+            updateBookingStatus={updateBookingStatus}
           />
         )}
         {activeSection === 'settings' && <SettingsSection />}
@@ -379,6 +394,75 @@ function HistorySection({ cars, showNotice }: { cars: Car[]; showNotice: (messag
       ) : (
         <p className="soft-note">No account history yet. Published listings and actions will appear here.</p>
       )}
+      <p className="no-more-activity">No more activity</p>
+    </section>
+  )
+}
+
+function BookingsSection({
+  user,
+  bookings,
+  isLoading,
+  updateBookingStatus,
+}: {
+  user: User
+  bookings: RentalBooking[]
+  isLoading: boolean
+  updateBookingStatus: (booking: RentalBooking, action: 'confirm' | 'cancel') => void
+}) {
+  const sortedBookings = [...bookings].sort((firstBooking, secondBooking) => (
+    new Date(secondBooking.created_at).getTime() - new Date(firstBooking.created_at).getTime()
+  ))
+
+  return (
+    <section className="bookings-section">
+      <div className="profile-section-head stacked">
+        <h1>Rental Bookings</h1>
+        <p>Review rental requests, confirm approved bookings, or cancel unavailable dates.</p>
+      </div>
+
+      {isLoading && <p className="soft-note">Loading rental bookings...</p>}
+      {!isLoading && sortedBookings.length === 0 && <p className="soft-note">Rental requests will appear here after a buyer sends a booking request.</p>}
+
+      <div className="booking-list">
+        {sortedBookings.map((booking) => {
+          const isSeller = booking.seller === user.id
+          const canManage = isSeller && booking.status === 'pending'
+
+          return (
+            <article key={booking.id} className="booking-row">
+              <img src={booking.car_image_url} alt={booking.car_title} />
+              <div className="booking-main">
+                <div>
+                  <h2>{booking.car_title}</h2>
+                  <b className={`booking-status ${booking.status}`}>{booking.status}</b>
+                </div>
+                <p>
+                  {new Date(booking.start_date).toLocaleDateString()} - {new Date(booking.end_date).toLocaleDateString()}
+                  <span>{booking.days} day{booking.days === 1 ? '' : 's'}</span>
+                </p>
+                <p>
+                  {isSeller ? `Renter: ${booking.renter_name}` : `Seller: ${booking.seller_name}`}
+                  <span>Pickup: {booking.pickup_location}</span>
+                  {booking.dropoff_location && <span>Dropoff: {booking.dropoff_location}</span>}
+                </p>
+              </div>
+              <div className="booking-side">
+                <strong>{formatPrice(booking.total_price)}</strong>
+                <span>Deposit {formatPrice(booking.deposit)}</span>
+                {canManage ? (
+                  <div>
+                    <button type="button" onClick={() => updateBookingStatus(booking, 'confirm')}>Confirm</button>
+                    <button type="button" onClick={() => updateBookingStatus(booking, 'cancel')}>Cancel</button>
+                  </div>
+                ) : (
+                  <em>{isSeller ? 'No action required' : 'Waiting for seller'}</em>
+                )}
+              </div>
+            </article>
+          )
+        })}
+      </div>
       <p className="no-more-activity">No more activity</p>
     </section>
   )

@@ -265,6 +265,12 @@ class CarViewSet(viewsets.ModelViewSet):
             serializer = CarCommentSerializer(car.comments.all(), many=True)
             return Response(serializer.data)
 
+        if car.owner_id == request.user.id:
+            return Response(
+                {'detail': 'You cannot ask a question on your own listing.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = CarCommentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         comment = CarComment.objects.create(
@@ -297,6 +303,12 @@ class CarViewSet(viewsets.ModelViewSet):
         if request.method == 'GET':
             serializer = CarReviewSerializer(car.reviews.select_related('user'), many=True)
             return Response(serializer.data)
+
+        if car.owner_id == request.user.id:
+            return Response(
+                {'detail': 'You cannot review your own listing.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = CarReviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
