@@ -33,11 +33,11 @@ type ProfilePageProps = {
 
 const menuItems: { label: string; section: ProfileSection }[] = [
   { label: 'Edit Account', section: 'edit' },
-  { label: 'My Favorites', section: 'favorites' },
+  { label: 'Saved Cars', section: 'favorites' },
   { label: 'Notifications', section: 'notifications' },
-  { label: 'History', section: 'history' },
+  { label: 'Seller Activity', section: 'history' },
   { label: 'My Listings', section: 'listings' },
-  { label: 'Bookings', section: 'bookings' },
+  { label: 'Rental Requests', section: 'bookings' },
   { label: 'Settings', section: 'settings' },
   { label: 'Support', section: 'support' },
 ]
@@ -378,7 +378,7 @@ function NotificationGroup({
 
 function HistorySection({ cars, showNotice }: { cars: Car[]; showNotice: (message: string) => void }) {
   const items = cars.map((car) => [
-    car.status === 'sold' ? 'Listing Sold' : car.status === 'hidden' ? 'Listing Pending' : 'Listing Active',
+    car.status === 'sold' ? 'Sold listing' : car.status === 'hidden' ? 'Listing under review' : 'Published listing',
     `${car.brand} ${car.model} was listed with ${formatMileage(car.mileage)} mileage for ${formatPrice(car.price)}.`,
     new Date(car.created_at).toLocaleDateString(),
   ])
@@ -386,13 +386,13 @@ function HistorySection({ cars, showNotice }: { cars: Car[]; showNotice: (messag
   return (
     <section className="history-section">
       <div className="profile-section-head stacked">
-        <h1>History</h1>
-        <p>View your recent activity and track all important actions.</p>
+        <h1>Seller Activity</h1>
+        <p>Track listing events for cars you published as a seller.</p>
       </div>
       {items.length > 0 ? (
-        <NotificationGroup title="Listings" items={items} showNotice={showNotice} />
+        <NotificationGroup title="Listing timeline" items={items} showNotice={showNotice} />
       ) : (
-        <p className="soft-note">No account history yet. Published listings and actions will appear here.</p>
+        <p className="soft-note">No seller activity yet. Published listings and sales updates will appear here.</p>
       )}
       <p className="no-more-activity">No more activity</p>
     </section>
@@ -410,59 +410,89 @@ function BookingsSection({
   isLoading: boolean
   updateBookingStatus: (booking: RentalBooking, action: 'confirm' | 'cancel') => void
 }) {
-  const sortedBookings = [...bookings].sort((firstBooking, secondBooking) => (
+  const safeBookings = Array.isArray(bookings) ? bookings : []
+  const sortedBookings = [...safeBookings].sort((firstBooking, secondBooking) => (
     new Date(secondBooking.created_at).getTime() - new Date(firstBooking.created_at).getTime()
   ))
+  const incomingBookings = sortedBookings.filter((booking) => booking.seller === user.id)
+  const outgoingBookings = sortedBookings.filter((booking) => booking.renter === user.id)
+  const formatBookingDate = (date: string) => {
+    const parsedDate = new Date(date)
+    return Number.isNaN(parsedDate.getTime()) ? date || 'Not specified' : parsedDate.toLocaleDateString()
+  }
+  const formatBookingMoney = (value: string) => (
+    Number.isFinite(Number(value)) ? formatPrice(value) : '$0'
+  )
+  const statusNote = (booking: RentalBooking, isSeller: boolean) => {
+    if (booking.status === 'confirmed') return isSeller ? 'Confirmed for renter' : 'Confirmed by seller'
+    if (booking.status === 'cancelled') return 'Cancelled'
+    return isSeller ? 'Waiting for your decision' : 'Waiting for seller'
+  }
+  const renderBooking = (booking: RentalBooking, isSeller: boolean) => {
+    const canManage = isSeller && booking.status === 'pending'
+    const status = booking.status || 'pending'
+
+    return (
+      <article key={booking.id} className="booking-row">
+        <img src={booking.car_image_url || '/vite.svg'} alt={booking.car_title || 'Rental booking'} />
+        <div className="booking-main">
+          <div>
+            <h2>{booking.car_title || 'Rental booking'}</h2>
+            <b className={`booking-status ${status}`}>{status}</b>
+          </div>
+          <p>
+            {formatBookingDate(booking.start_date)} - {formatBookingDate(booking.end_date)}
+            <span>{booking.days} day{booking.days === 1 ? '' : 's'}</span>
+          </p>
+          <p>
+            {isSeller ? `Renter: ${booking.renter_name}` : `Seller: ${booking.seller_name}`}
+            <span>Pickup: {booking.pickup_location || 'Not specified'}</span>
+            {booking.dropoff_location && <span>Dropoff: {booking.dropoff_location}</span>}
+          </p>
+        </div>
+        <div className="booking-side">
+          <strong>{formatBookingMoney(booking.total_price)}</strong>
+          <span>Deposit {formatBookingMoney(booking.deposit)}</span>
+          {canManage ? (
+            <div>
+              <button type="button" onClick={() => updateBookingStatus(booking, 'confirm')}>Confirm</button>
+              <button type="button" onClick={() => updateBookingStatus(booking, 'cancel')}>Cancel</button>
+            </div>
+          ) : (
+            <em>{statusNote(booking, isSeller)}</em>
+          )}
+        </div>
+      </article>
+    )
+  }
 
   return (
     <section className="bookings-section">
       <div className="profile-section-head stacked">
-        <h1>Rental Bookings</h1>
-        <p>Review rental requests, confirm approved bookings, or cancel unavailable dates.</p>
+        <h1>Rental Requests</h1>
+        <p>Incoming requests are cars you rent out. My requests are bookings you sent to other sellers.</p>
       </div>
 
       {isLoading && <p className="soft-note">Loading rental bookings...</p>}
       {!isLoading && sortedBookings.length === 0 && <p className="soft-note">Rental requests will appear here after a buyer sends a booking request.</p>}
 
-      <div className="booking-list">
-        {sortedBookings.map((booking) => {
-          const isSeller = booking.seller === user.id
-          const canManage = isSeller && booking.status === 'pending'
+      {incomingBookings.length > 0 && (
+        <div className="booking-group">
+          <h2>Incoming requests</h2>
+          <div className="booking-list">
+            {incomingBookings.map((booking) => renderBooking(booking, true))}
+          </div>
+        </div>
+      )}
 
-          return (
-            <article key={booking.id} className="booking-row">
-              <img src={booking.car_image_url} alt={booking.car_title} />
-              <div className="booking-main">
-                <div>
-                  <h2>{booking.car_title}</h2>
-                  <b className={`booking-status ${booking.status}`}>{booking.status}</b>
-                </div>
-                <p>
-                  {new Date(booking.start_date).toLocaleDateString()} - {new Date(booking.end_date).toLocaleDateString()}
-                  <span>{booking.days} day{booking.days === 1 ? '' : 's'}</span>
-                </p>
-                <p>
-                  {isSeller ? `Renter: ${booking.renter_name}` : `Seller: ${booking.seller_name}`}
-                  <span>Pickup: {booking.pickup_location}</span>
-                  {booking.dropoff_location && <span>Dropoff: {booking.dropoff_location}</span>}
-                </p>
-              </div>
-              <div className="booking-side">
-                <strong>{formatPrice(booking.total_price)}</strong>
-                <span>Deposit {formatPrice(booking.deposit)}</span>
-                {canManage ? (
-                  <div>
-                    <button type="button" onClick={() => updateBookingStatus(booking, 'confirm')}>Confirm</button>
-                    <button type="button" onClick={() => updateBookingStatus(booking, 'cancel')}>Cancel</button>
-                  </div>
-                ) : (
-                  <em>{isSeller ? 'No action required' : 'Waiting for seller'}</em>
-                )}
-              </div>
-            </article>
-          )
-        })}
-      </div>
+      {outgoingBookings.length > 0 && (
+        <div className="booking-group">
+          <h2>My rental requests</h2>
+          <div className="booking-list">
+            {outgoingBookings.map((booking) => renderBooking(booking, false))}
+          </div>
+        </div>
+      )}
       <p className="no-more-activity">No more activity</p>
     </section>
   )

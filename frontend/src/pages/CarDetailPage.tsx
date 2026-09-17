@@ -34,6 +34,25 @@ function titleCase(value: string) {
 }
 
 function buildFeatureList(car: Car) {
+  const title = `${car.brand} ${car.model}`.toLowerCase()
+  const modelFeatures: Record<string, string[]> = {
+    porsche: ['Sport-tuned chassis', 'Performance braking package', 'Driver-focused cabin'],
+    bmw: ['xDrive-ready handling profile', 'Premium multimedia system', 'Driver assistance package'],
+    mercedes: ['Comfort suspension setup', 'Premium interior package', 'Advanced safety assist'],
+    audi: ['Quattro-style road stability', 'Virtual cockpit-style display', 'LED exterior lighting'],
+    volvo: ['Pilot assist safety package', 'High-strength safety body', 'Comfort-focused cabin'],
+    honda: ['Responsive steering setup', 'Efficient VTEC-style petrol engine', 'Practical daily-use cabin'],
+    toyota: ['Hybrid efficiency package', 'Toyota Safety Sense-style assist', 'Low running costs'],
+    kia: ['Modern infotainment package', 'Efficient city-driving setup', 'Practical family cabin'],
+    hyundai: ['Smart safety assist', 'Comfortable crossover setup', 'Efficient daily-use drivetrain'],
+    volkswagen: ['Balanced German chassis', 'Practical interior layout', 'Efficient long-distance setup'],
+    tesla: ['Electric drivetrain', 'Large central display', 'Over-the-air software capability'],
+    lamborghini: ['Supercar performance setup', 'Track-focused aerodynamics', 'Carbon-style sport cabin'],
+    'land rover': ['All-terrain capability', 'Premium SUV comfort', 'Advanced traction control'],
+  }
+  const matchedFeatures = Object.entries(modelFeatures)
+    .find(([brand]) => title.includes(brand))?.[1] || []
+
   return [
     `${titleCase(car.transmission)} transmission`,
     `${titleCase(car.fuel_type)} powertrain`,
@@ -41,7 +60,12 @@ function buildFeatureList(car: Car) {
     car.condition ? `${titleCase(car.condition)} condition` : '',
     car.mileage <= 50000 ? 'Low mileage for its year' : 'Documented mileage',
     car.is_available_for_rent ? `Rental available from ${car.minimum_rent_days} day${car.minimum_rent_days === 1 ? '' : 's'}` : 'Available for purchase',
-  ].filter(Boolean)
+    ...matchedFeatures,
+  ]
+    .filter(Boolean)
+    .map((feature) => feature.replace(/^OK\s+/i, '').trim())
+    .filter((feature, index, features) => feature && features.indexOf(feature) === index)
+    .slice(0, 8)
 }
 
 function splitDescriptionAndContacts(car: Car) {
@@ -206,7 +230,7 @@ function CarDetailPage({
 
         <section className="detail-panel features-panel">
           <h2>Features</h2>
-          {carFeatures.map((feature) => <span key={feature}>{feature}</span>)}
+          {carFeatures.map((feature) => <span key={feature}>{feature.replace(/^OK\s+/i, '')}</span>)}
         </section>
 
         <section className="detail-panel description-panel">
