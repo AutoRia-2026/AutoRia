@@ -3057,6 +3057,46 @@ textarea:focus {
   box-shadow: 0 0 0 1px #5279d4;
 }
 
+.avatar-upload-field input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.avatar-upload-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 42px;
+  border: 1px solid rgba(178, 191, 211, 0.56);
+  border-radius: 6px;
+  padding: 0 6px 0 12px;
+  background: #111b2d;
+  color: #dce5f2;
+  cursor: pointer;
+}
+
+.avatar-upload-control span {
+  min-width: 0;
+  overflow: hidden;
+  color: #aeb9cc;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-upload-control strong {
+  flex: 0 0 auto;
+  border-radius: 5px;
+  padding: 8px 12px;
+  background: #2d4f9a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .account-divider {
   height: 1px;
   margin: 30px 0 22px;

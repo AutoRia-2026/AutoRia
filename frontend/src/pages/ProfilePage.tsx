@@ -68,6 +68,7 @@ function ProfilePage({
   const showProfileBanner = ['favorites', 'notifications', 'history', 'support'].includes(activeSection)
   const [listingStatus, setListingStatus] = useState('all')
   const [notificationsRead, setNotificationsRead] = useState(false)
+  const [avatarFileName, setAvatarFileName] = useState('')
 
   return (
     <section className="account-page">
@@ -159,14 +160,19 @@ function ProfilePage({
                   Avatar URL
                   <input type="url" value={profileForm.avatar_url} onChange={(event) => setProfileForm({ ...profileForm, avatar_url: event.target.value })} placeholder="https://..." />
                 </label>
-                <label>
-                  Upload Avatar
+                <label className="avatar-upload-field">
+                  <span>Upload Avatar</span>
+                  <span className="avatar-upload-control">
+                    <span>{avatarFileName || 'No file selected'}</span>
+                    <strong>Choose image</strong>
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={(event) => {
                       const file = event.target.files?.[0]
                       if (!file) return
+                      setAvatarFileName(file.name)
                       const reader = new FileReader()
                       reader.onload = () => setProfileForm({ ...profileForm, avatar_url: String(reader.result || '') })
                       reader.readAsDataURL(file)
