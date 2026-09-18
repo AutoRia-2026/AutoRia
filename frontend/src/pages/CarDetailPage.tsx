@@ -189,7 +189,7 @@ function CarDetailPage({
         <section className="detail-panel overview-panel">
           <h2>Overview</h2>
           <dl>
-            <div><dt>Make</dt><dd>{car.brand}</dd></div>
+            <div><dt>Brand</dt><dd>{car.brand}</dd></div>
             <div><dt>Body Type</dt><dd>{car.body_type || 'Not specified'}</dd></div>
             <div><dt>Model</dt><dd>{car.model}</dd></div>
             <div><dt>Drive Type</dt><dd>{car.transmission === 'automatic' ? 'Automatic' : 'Manual'}</dd></div>

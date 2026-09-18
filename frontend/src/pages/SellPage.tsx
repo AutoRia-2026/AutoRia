@@ -109,9 +109,9 @@ function SellPage({
             <p>Let's start with some basic details about your vehicle.</p>
             <div className="sell-grid">
               <label>
-                Make
+                Brand
                 <select value={form.brand} onChange={(event) => updateField('brand', event.target.value)} required>
-                  <option value="">Select Make</option>
+                  <option value="">Select Brand</option>
                   {brandOptions.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
                 </select>
               </label>
