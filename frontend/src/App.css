@@ -179,6 +179,19 @@ textarea:focus {
 .spotlight-car article {
   position: relative;
   text-align: center;
+  animation: spotlightFade 180ms ease;
+}
+
+@keyframes spotlightFade {
+  from {
+    opacity: 0.72;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .spotlight-image-button {
@@ -225,6 +238,35 @@ textarea:focus {
 .spotlight-side:hover {
   transform: translateY(-2px);
   background: rgba(82, 101, 132, 0.95);
+}
+
+.spotlight-side:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spotlight-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.spotlight-dots button {
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(220, 231, 247, 0.5);
+  border-radius: 999px;
+  background: rgba(84, 99, 126, 0.75);
+  cursor: pointer;
+  transition: width 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.spotlight-dots button.active {
+  width: 28px;
+  border-color: #6f91d8;
+  background: #345daf;
 }
 
 .spotlight-meta {

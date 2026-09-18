@@ -209,13 +209,21 @@ function ProfilePage({
 
         {activeSection === 'notifications' && (
           <NotificationsSection
+            user={user}
             notificationsRead={notificationsRead}
             setNotificationsRead={setNotificationsRead}
             showNotice={showNotice}
             conversations={conversations}
           />
         )}
-        {activeSection === 'history' && <HistorySection cars={myListings} showNotice={showNotice} />}
+        {activeSection === 'history' && (
+          <HistorySection
+            user={user}
+            cars={myListings}
+            conversations={conversations}
+            showNotice={showNotice}
+          />
+        )}
         {activeSection === 'listings' && (
           <ListingsSection
             cars={myListings}
@@ -298,11 +306,13 @@ function FavoritesSection({
 }
 
 function NotificationsSection({
+  user,
   notificationsRead,
   setNotificationsRead,
   showNotice,
   conversations,
 }: {
+  user: User
   notificationsRead: boolean
   setNotificationsRead: (value: boolean) => void
   showNotice: (message: string) => void
@@ -311,8 +321,8 @@ function NotificationsSection({
   const items = conversations
     .filter((conversation) => conversation.latest_message)
     .map((conversation) => [
-      conversation.unread_count > 0 ? 'Unread message' : 'Message',
-      `${conversation.participant_name}: ${conversation.latest_message?.text || 'Conversation opened'}`,
+      conversation.latest_message?.sender === user.id ? 'Message sent' : conversation.unread_count > 0 ? 'Unread message' : 'Message',
+      conversationActivityText(conversation, user.id),
       new Date(conversation.updated_at).toLocaleString(),
     ])
 
@@ -361,7 +371,7 @@ function NotificationGroup({
       <h2>{title}</h2>
       <div>
         {items.map(([label, text, time]) => (
-          <article key={`${label}-${time}`} className={muted ? 'muted' : ''}>
+          <article key={`${label}-${text}-${time}`} className={muted ? 'muted' : ''}>
             <span>{label.includes('offer') ? 'Tag' : 'Msg'}</span>
             <div>
               <strong>{label}</strong>
@@ -376,23 +386,64 @@ function NotificationGroup({
   )
 }
 
-function HistorySection({ cars, showNotice }: { cars: Car[]; showNotice: (message: string) => void }) {
-  const items = cars.map((car) => [
-    car.status === 'sold' ? 'Listing Sold' : car.status === 'hidden' ? 'Listing Pending' : 'Listing Active',
-    `${car.brand} ${car.model} was listed with ${formatMileage(car.mileage)} mileage for ${formatPrice(car.price)}.`,
-    new Date(car.created_at).toLocaleDateString(),
-  ])
+function conversationActivityText(conversation: Conversation, userId: number) {
+  const latestMessage = conversation.latest_message
+  const otherName = conversation.participant_name || (
+    conversation.seller === userId ? conversation.buyer_name : conversation.seller_name
+  )
+  const listingTitle = conversation.car_title ? `about ${conversation.car_title}` : 'about this listing'
+  const text = latestMessage?.text || 'Conversation opened'
+
+  if (latestMessage?.sender === userId) {
+    return conversation.seller === userId
+      ? `You answered ${otherName} ${listingTitle}: ${text}`
+      : `You wrote to ${otherName} ${listingTitle}: ${text}`
+  }
+
+  return conversation.seller === userId
+    ? `${otherName} wrote to you ${listingTitle}: ${text}`
+    : `${otherName} answered you ${listingTitle}: ${text}`
+}
+
+function HistorySection({
+  user,
+  cars,
+  conversations,
+  showNotice,
+}: {
+  user: User
+  cars: Car[]
+  conversations: Conversation[]
+  showNotice: (message: string) => void
+}) {
+  const listingItems = cars.map((car) => ({
+    label: car.status === 'sold' ? 'Sold listing' : car.status === 'hidden' ? 'Listing under review' : 'Published listing',
+    text: `${car.brand} ${car.model} was listed with ${formatMileage(car.mileage)} mileage for ${formatPrice(car.price)}.`,
+    time: new Date(car.created_at).toLocaleString(),
+    sortTime: new Date(car.created_at).getTime(),
+  }))
+  const messageItems = conversations
+    .filter((conversation) => conversation.latest_message)
+    .map((conversation) => ({
+      label: conversation.latest_message?.sender === user.id ? 'Message sent' : 'Message received',
+      text: conversationActivityText(conversation, user.id),
+      time: new Date(conversation.updated_at).toLocaleString(),
+      sortTime: new Date(conversation.updated_at).getTime(),
+    }))
+  const items = [...messageItems, ...listingItems]
+    .sort((firstItem, secondItem) => secondItem.sortTime - firstItem.sortTime)
+    .map((item) => [item.label, item.text, item.time])
 
   return (
     <section className="history-section">
       <div className="profile-section-head stacked">
         <h1>History</h1>
-        <p>View your recent activity and track all important actions.</p>
+        <p>Track your messages, listing updates and seller actions in one timeline.</p>
       </div>
       {items.length > 0 ? (
-        <NotificationGroup title="Listings" items={items} showNotice={showNotice} />
+        <NotificationGroup title="Recent activity" items={items} showNotice={showNotice} />
       ) : (
-        <p className="soft-note">No account history yet. Published listings and actions will appear here.</p>
+        <p className="soft-note">No activity yet. Messages, published listings and sales updates will appear here.</p>
       )}
       <p className="no-more-activity">No more activity</p>
     </section>
