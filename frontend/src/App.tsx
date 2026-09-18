@@ -322,7 +322,7 @@ function App() {
   }, [page, profileSection, refreshIndex, token])
 
   useEffect(() => {
-    if (!token || (page !== 'messages' && !(page === 'profile' && profileSection === 'notifications'))) {
+    if (!token || (page !== 'messages' && !(page === 'profile' && ['notifications', 'history'].includes(profileSection)))) {
       return
     }
 
