@@ -364,7 +364,7 @@ function App() {
   }, [page, profileSection, token])
 
   useEffect(() => {
-    if (!token || page !== 'profile' || profileSection !== 'bookings') {
+    if (!token || page !== 'profile' || !['bookings', 'notifications'].includes(profileSection)) {
       return
     }
 
@@ -377,7 +377,10 @@ function App() {
       },
     })
       .then((data) => {
-        if (isCurrent) setRentalBookings(data as RentalBooking[])
+        if (!isCurrent) return
+
+        const response = data as RentalBooking[] | { results?: RentalBooking[] }
+        setRentalBookings(Array.isArray(response) ? response : response.results || [])
       })
       .catch((requestError) => {
         if (isCurrent) showNotice(parseApiError(requestError))

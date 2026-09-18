@@ -214,6 +214,7 @@ function ProfilePage({
             setNotificationsRead={setNotificationsRead}
             showNotice={showNotice}
             conversations={conversations}
+            rentalBookings={rentalBookings}
           />
         )}
         {activeSection === 'history' && (
@@ -311,27 +312,45 @@ function NotificationsSection({
   setNotificationsRead,
   showNotice,
   conversations,
+  rentalBookings,
 }: {
   user: User
   notificationsRead: boolean
   setNotificationsRead: (value: boolean) => void
   showNotice: (message: string) => void
   conversations: Conversation[]
+  rentalBookings: RentalBooking[]
 }) {
-  const items = conversations
-    .filter((conversation) => conversation.latest_message)
-    .map((conversation) => [
-      conversation.latest_message?.sender === user.id ? 'Message sent' : conversation.unread_count > 0 ? 'Unread message' : 'Message',
-      conversationActivityText(conversation, user.id),
-      new Date(conversation.updated_at).toLocaleString(),
-    ])
+  const sellerReplyItems = conversations
+    .filter((conversation) => (
+      conversation.buyer === user.id
+      && conversation.latest_message
+      && conversation.latest_message.sender === conversation.seller
+    ))
+    .map((conversation) => ({
+      label: conversation.unread_count > 0 ? 'New seller reply' : 'Seller reply',
+      text: `${conversation.seller_name || conversation.participant_name} replied about ${conversation.car_title}: ${conversation.latest_message?.text || 'New message'}`,
+      time: new Date(conversation.updated_at).toLocaleString(),
+      sortTime: new Date(conversation.updated_at).getTime(),
+    }))
+  const confirmedBookingItems = rentalBookings
+    .filter((booking) => booking.renter === user.id && booking.status === 'confirmed')
+    .map((booking) => ({
+      label: 'Rental confirmed',
+      text: `${booking.seller_name} confirmed your booking for ${booking.car_title}.`,
+      time: new Date(booking.updated_at || booking.created_at).toLocaleString(),
+      sortTime: new Date(booking.updated_at || booking.created_at).getTime(),
+    }))
+  const items = [...sellerReplyItems, ...confirmedBookingItems]
+    .sort((firstItem, secondItem) => secondItem.sortTime - firstItem.sortTime)
+    .map((item) => [item.label, item.text, item.time])
 
   return (
     <section className="notifications-section">
       <div className="profile-section-head">
         <div>
           <h1>Notifications</h1>
-          <p>Stay up to date with your account activity and vehicle listings.</p>
+          <p>Only seller replies and confirmed rental requests appear here.</p>
         </div>
         <button
           type="button"
@@ -339,16 +358,16 @@ function NotificationsSection({
             setNotificationsRead(true)
             showNotice('Notifications marked as read')
           }}
-          disabled={notificationsRead}
+          disabled={notificationsRead || items.length === 0}
         >
           {notificationsRead ? 'All read' : 'Mark all as read'}
         </button>
       </div>
 
       {items.length > 0 ? (
-        <NotificationGroup title="Messages" items={items} muted={notificationsRead} showNotice={showNotice} />
+        <NotificationGroup title="Important updates" items={items} muted={notificationsRead} showNotice={showNotice} />
       ) : (
-        <p className="soft-note">No notifications yet. New messages and listing activity will appear here.</p>
+        <p className="soft-note">No notifications yet. Seller replies and confirmed rentals will appear here.</p>
       )}
       <p className="no-more-activity">No more activity</p>
     </section>
@@ -372,7 +391,7 @@ function NotificationGroup({
       <div>
         {items.map(([label, text, time]) => (
           <article key={`${label}-${text}-${time}`} className={muted ? 'muted' : ''}>
-            <span>{label.includes('offer') ? 'Tag' : 'Msg'}</span>
+            <span>{label.toLowerCase().includes('confirmed') ? 'Deal' : label.toLowerCase().includes('offer') ? 'Tag' : 'Msg'}</span>
             <div>
               <strong>{label}</strong>
               <p>{text}</p>
