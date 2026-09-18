@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Car } from '../types/cars'
 import BuyCarCard from '../components/BuyCarCard'
 import { carTitle, fallbackImage, formatMileage, formatPrice } from '../utils/cars'
@@ -30,12 +30,26 @@ const faqItems = [
 function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePageProps) {
   const [activeDiscountIndex, setActiveDiscountIndex] = useState(0)
   const [openFaqIndex, setOpenFaqIndex] = useState(-1)
-  const discountCars = cars.filter((car) => car.is_promoted).slice(0, 4)
-  const bestCar = discountCars[activeDiscountIndex % Math.max(discountCars.length, 1)]
+  const discountCars = useMemo(() => {
+    const promotedCars = cars.filter((car) => car.is_promoted)
+    const promotedIds = new Set(promotedCars.map((car) => car.id))
+    const fallbackCars = cars.filter((car) => !promotedIds.has(car.id))
+
+    return [...promotedCars, ...fallbackCars].slice(0, 4)
+  }, [cars])
+  const safeDiscountIndex = discountCars.length ? activeDiscountIndex % discountCars.length : 0
+  const bestCar = discountCars[safeDiscountIndex]
   const previewCars = cars.slice(0, 9)
+  const canSwitchDiscounts = discountCars.length > 1
+
+  useEffect(() => {
+    setActiveDiscountIndex((currentIndex) => (
+      discountCars.length ? currentIndex % discountCars.length : 0
+    ))
+  }, [discountCars.length])
 
   function changeDiscount(direction: -1 | 1) {
-    if (!discountCars.length) {
+    if (!canSwitchDiscounts) {
       return
     }
 
@@ -67,8 +81,8 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
         <section className="best-discount">
           <h2>Best car discounts</h2>
           <div className="spotlight-car">
-            <button type="button" className="spotlight-side" aria-label="Previous discount" onClick={() => changeDiscount(-1)}>{'<'}</button>
-            <article>
+            <button type="button" className="spotlight-side" aria-label="Previous discount" onClick={() => changeDiscount(-1)} disabled={!canSwitchDiscounts}>{'<'}</button>
+            <article key={bestCar.id}>
               <button type="button" className="spotlight-image-button" onClick={() => openCar(bestCar)}>
                 <img src={fallbackImage(bestCar)} alt={carTitle(bestCar)} />
               </button>
@@ -85,8 +99,21 @@ function HomePage({ cars, isCarsLoading, openCar, toggleLike, openBuy }: HomePag
                 <button type="button" onClick={() => openCar(bestCar)}>Read more</button>
               </div>
             </article>
-            <button type="button" className="spotlight-side next" aria-label="Next discount" onClick={() => changeDiscount(1)}>{'>'}</button>
+            <button type="button" className="spotlight-side next" aria-label="Next discount" onClick={() => changeDiscount(1)} disabled={!canSwitchDiscounts}>{'>'}</button>
           </div>
+          {canSwitchDiscounts && (
+            <div className="spotlight-dots" aria-label="Discount cars">
+              {discountCars.map((car, index) => (
+                <button
+                  key={car.id}
+                  type="button"
+                  className={safeDiscountIndex === index ? 'active' : ''}
+                  aria-label={`Show ${carTitle(car)}`}
+                  onClick={() => setActiveDiscountIndex(index)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
