@@ -30,6 +30,10 @@ function Header({
   canGoBack,
   applyBuyTab,
 }: HeaderProps) {
+  const profileName = user ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username : ''
+  const profileInitial = (profileName.trim()[0] || 'U').toUpperCase()
+  const avatarUrl = user?.seller_profile?.avatar_url?.trim()
+
   return (
     <header className="buy-header">
       <DriveHubLogo onClick={goHome} />
@@ -44,10 +48,38 @@ function Header({
         <button type="button" onClick={openSell}>Sell</button>
       </nav>
       <div className="buy-header-actions">
-        <button type="button" onClick={() => user ? openProfile('favorites') : openAuth()} aria-label="Favorites">Fav</button>
-        <button type="button" onClick={openSupport} aria-label="Help">?</button>
+        <button
+          type="button"
+          className="header-circle-button"
+          onClick={() => user ? openProfile('favorites') : openAuth()}
+          aria-label="Favorites"
+          title="Favorites"
+        >
+          {'♡'}
+        </button>
+        <button
+          type="button"
+          className="header-circle-button"
+          onClick={openSupport}
+          aria-label="Help"
+          title="Help"
+        >
+          ?
+        </button>
         {user ? (
-          <button type="button" onClick={() => openProfile('edit')}>{user.first_name || user.username}</button>
+          <button
+            type="button"
+            className="profile-avatar-button"
+            onClick={() => openProfile('edit')}
+            aria-label="Open profile"
+            title={profileName}
+          >
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" />
+            ) : (
+              <span className="profile-avatar-initial">{profileInitial}</span>
+            )}
+          </button>
         ) : (
           <button type="button" onClick={openAuth}>Log in</button>
         )}
