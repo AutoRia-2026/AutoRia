@@ -1,4 +1,4 @@
-export type Page = 'auth' | 'home' | 'buy' | 'rent' | 'sell' | 'messages' | 'detail' | 'profile' | 'logout' | 'reviews' | 'review-form' | 'review-submitted' | 'error'
+export type Page = 'auth' | 'home' | 'buy' | 'rent' | 'sell' | 'compare' | 'messages' | 'detail' | 'profile' | 'logout' | 'reviews' | 'review-form' | 'review-submitted' | 'error'
 export type ProfileSection = 'edit' | 'favorites' | 'notifications' | 'history' | 'listings' | 'bookings' | 'settings' | 'support'
 
 export type AuthScreen =

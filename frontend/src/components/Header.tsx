@@ -6,6 +6,7 @@ type HeaderProps = {
   goHome: () => void
   openRent: () => void
   openSell: () => void
+  openCompare: () => void
   openMessages: () => void
   openAuth: () => void
   openProfile: (section?: ProfileSection) => void
@@ -20,6 +21,7 @@ function Header({
   goHome,
   openRent,
   openSell,
+  openCompare,
   openMessages,
   openAuth,
   openProfile,
@@ -38,6 +40,7 @@ function Header({
         <button type="button" onClick={openMessages}>Messages</button>
         <button type="button" onClick={openRent}>Rent</button>
         <button type="button" onClick={() => applyBuyTab('All cars')}>Buy</button>
+        <button type="button" onClick={openCompare}>Compare</button>
         <button type="button" onClick={openSell}>Sell</button>
       </nav>
       <div className="buy-header-actions">

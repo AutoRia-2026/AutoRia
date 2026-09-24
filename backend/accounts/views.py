@@ -58,8 +58,17 @@ def create_email_code(user, purpose):
 
 
 def send_code_email(user, verification):
-    subject = 'Your VEYO verification code'
-    message = f'Your verification code is: {verification.code}'
+    purpose_text = {
+        EmailVerificationCode.PURPOSE_REGISTER: 'account verification',
+        EmailVerificationCode.PURPOSE_PASSWORD_RESET: 'password reset',
+    }.get(verification.purpose, 'verification')
+    subject = f'Your DriveHub {purpose_text} code'
+    message = (
+        f'Hello, {user.username}!\n\n'
+        f'Your DriveHub {purpose_text} code is: {verification.code}\n'
+        'This code is valid for 15 minutes.\n\n'
+        'If you did not request this code, you can ignore this email.'
+    )
     send_mail(subject, message, None, [user.email], fail_silently=False)
 
 

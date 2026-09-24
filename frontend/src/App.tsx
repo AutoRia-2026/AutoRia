@@ -9,6 +9,7 @@ import Header from './components/Header'
 import AuthPage from './pages/AuthPage'
 import BuyPage from './pages/BuyPage'
 import CarDetailPage from './pages/CarDetailPage'
+import ComparePage from './pages/ComparePage'
 import ErrorPage from './pages/ErrorPage'
 import HomePage from './pages/HomePage'
 import LeaveReviewPage from './pages/LeaveReviewPage'
@@ -502,6 +503,12 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function openCompare() {
+    setPage('compare')
+    setNotice('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function openMessages() {
     if (!token) {
       openAuth('login')
@@ -823,7 +830,9 @@ function App() {
       })
       setPassword('')
       setConfirmPassword('')
+      setCode('')
       changeAuthScreen('signup-code')
+      setMessage('Verification code sent to your email.')
     } catch (requestError) {
       setError(parseApiError(requestError))
     } finally {
@@ -844,8 +853,8 @@ function App() {
       setCode('')
       setPassword('')
       setConfirmPassword('')
-      setAuthScreen('login')
       setMessage('Account created. Please sign in.')
+      setAuthScreen('login')
     } catch (requestError) {
       setError(parseApiError(requestError))
     } finally {
@@ -863,6 +872,7 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ email }),
       })
+      setCode('')
       changeAuthScreen('check-email')
     } catch (requestError) {
       setError(parseApiError(requestError))
@@ -1630,6 +1640,7 @@ function App() {
         goHome={goHome}
         openRent={openRent}
         openBuy={openBuy}
+        openCompare={openCompare}
         openSell={openSell}
         openMessages={openMessages}
         openSupport={() => showNotice('Log in to open support from your profile')}
@@ -1647,6 +1658,7 @@ function App() {
         goHome={goHome}
         openRent={openRent}
         openSell={openSell}
+        openCompare={openCompare}
         openMessages={openMessages}
         openAuth={() => openAuth('login')}
         openProfile={openProfile}
@@ -1753,6 +1765,11 @@ function App() {
           submitListing={submitSellListing}
           saveDraft={saveSellDraft}
           cancel={goHome}
+        />
+      ) : page === 'compare' ? (
+        <ComparePage
+          openCar={openCar}
+          openBuy={openBuy}
         />
       ) : page === 'buy' ? (
         <BuyPage

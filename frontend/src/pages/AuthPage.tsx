@@ -18,6 +18,7 @@ type AuthPageProps = {
   goHome: () => void
   openRent: () => void
   openBuy: () => void
+  openCompare: () => void
   openSell: () => void
   openMessages: () => void
   openSupport: () => void
@@ -53,6 +54,7 @@ function AuthPage(props: AuthPageProps) {
           <button type="button" onClick={props.openMessages}>Messages</button>
           <button type="button" onClick={props.openRent}>Rent</button>
           <button type="button" onClick={props.openBuy}>Buy</button>
+          <button type="button" onClick={props.openCompare}>Compare</button>
           <button type="button" onClick={props.openSell}>Sell</button>
         </nav>
         <div className="drive-header-icons">

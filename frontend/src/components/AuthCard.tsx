@@ -73,9 +73,9 @@ function AuthCard({
     ? 'Log in to discover your perfect car'
     : isRegisterStep
       ? 'Create your account and start exploring trusted car'
-      : isResetPassword
-        ? 'Create a strong password to secure your account'
-        : "Don't worry. Enter your email address and we'll send you a link to reset your password"
+    : isResetPassword
+      ? 'Create a strong password to secure your account'
+        : "Don't worry. Enter your email address and we'll send you a code to reset your password"
 
   return (
     <section className="auth-card">
@@ -198,12 +198,22 @@ function AuthCard({
         <form className="auth-content" onSubmit={submitSignupCode}>
           <div className="auth-heading">
             <h1>Check your email</h1>
-            <p>We sent a verification code to your email.</p>
+            <p>We sent a 6-digit verification code to {email}.</p>
           </div>
           <label>
-            Enter code
-            <input type="text" inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value)} placeholder="123456" required />
+            Verification code
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
+              required
+            />
           </label>
+          {message && <p className="form-success">{message}</p>}
           {error && <p className="form-error">{error}</p>}
           <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? 'Loading...' : 'Verify account'}</button>
         </form>
@@ -220,7 +230,7 @@ function AuthCard({
             <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="youremail@gmail.com" required />
           </label>
           {error && <p className="form-error">{error}</p>}
-          <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? 'Loading...' : 'Send Reset Link'}</button>
+          <button className="primary-button" type="submit" disabled={isAuthLoading}>{isAuthLoading ? 'Loading...' : 'Send reset code'}</button>
           <button className="secondary-button" type="button" onClick={() => changeAuthScreen('login')}>Back to Login</button>
         </form>
       )}
@@ -243,7 +253,16 @@ function AuthCard({
           </div>
           <label>
             Verification code
-            <input type="text" inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value)} placeholder="123456" required />
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="123456"
+              required
+            />
           </label>
           <button className="primary-button" type="submit">Continue</button>
         </form>
