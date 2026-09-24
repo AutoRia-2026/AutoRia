@@ -214,6 +214,8 @@ function ProfilePage({
             setNotificationsRead={setNotificationsRead}
             showNotice={showNotice}
             conversations={conversations}
+            rentalBookings={rentalBookings}
+            isBookingsLoading={isBookingsLoading}
           />
         )}
         {activeSection === 'history' && (
@@ -311,27 +313,47 @@ function NotificationsSection({
   setNotificationsRead,
   showNotice,
   conversations,
+  rentalBookings,
+  isBookingsLoading,
 }: {
   user: User
   notificationsRead: boolean
   setNotificationsRead: (value: boolean) => void
   showNotice: (message: string) => void
   conversations: Conversation[]
+  rentalBookings: RentalBooking[]
+  isBookingsLoading: boolean
 }) {
-  const items = conversations
-    .filter((conversation) => conversation.latest_message)
-    .map((conversation) => [
-      conversation.latest_message?.sender === user.id ? 'Message sent' : conversation.unread_count > 0 ? 'Unread message' : 'Message',
-      conversationActivityText(conversation, user.id),
-      new Date(conversation.updated_at).toLocaleString(),
-    ])
+  const messageItems = conversations
+    .filter((conversation) => (
+      conversation.latest_message
+      && conversation.latest_message.sender !== user.id
+      && conversation.unread_count > 0
+    ))
+    .map((conversation) => ({
+      label: 'New reply',
+      text: conversationActivityText(conversation, user.id),
+      time: new Date(conversation.updated_at).toLocaleString(),
+      sortTime: new Date(conversation.updated_at).getTime(),
+    }))
+  const bookingItems = rentalBookings
+    .filter((booking) => booking.renter === user.id && booking.status === 'confirmed')
+    .map((booking) => ({
+      label: 'Rental accepted',
+      text: rentalAcceptedText(booking),
+      time: new Date(booking.updated_at).toLocaleString(),
+      sortTime: new Date(booking.updated_at).getTime(),
+    }))
+  const items = [...messageItems, ...bookingItems]
+    .sort((firstItem, secondItem) => secondItem.sortTime - firstItem.sortTime)
+    .map((item) => [item.label, item.text, item.time])
 
   return (
     <section className="notifications-section">
       <div className="profile-section-head">
         <div>
           <h1>Notifications</h1>
-          <p>Stay up to date with your account activity and vehicle listings.</p>
+          <p>Only real replies and confirmed rental requests appear here.</p>
         </div>
         <button
           type="button"
@@ -345,10 +367,11 @@ function NotificationsSection({
         </button>
       </div>
 
+      {isBookingsLoading && <p className="soft-note">Checking rental confirmations...</p>}
       {items.length > 0 ? (
-        <NotificationGroup title="Messages" items={items} muted={notificationsRead} showNotice={showNotice} />
+        <NotificationGroup title="Unread notifications" items={items} muted={notificationsRead} showNotice={showNotice} />
       ) : (
-        <p className="soft-note">No notifications yet. New messages and listing activity will appear here.</p>
+        <p className="soft-note">No notifications yet. New seller replies and accepted rental requests will appear here.</p>
       )}
       <p className="no-more-activity">No more activity</p>
     </section>
@@ -403,6 +426,15 @@ function conversationActivityText(conversation: Conversation, userId: number) {
   return conversation.seller === userId
     ? `${otherName} wrote to you ${listingTitle}: ${text}`
     : `${otherName} answered you ${listingTitle}: ${text}`
+}
+
+function rentalAcceptedText(booking: RentalBooking) {
+  const startDate = new Date(booking.start_date)
+  const endDate = new Date(booking.end_date)
+  const formattedStart = Number.isNaN(startDate.getTime()) ? booking.start_date : startDate.toLocaleDateString()
+  const formattedEnd = Number.isNaN(endDate.getTime()) ? booking.end_date : endDate.toLocaleDateString()
+
+  return `${booking.seller_name} confirmed your rental request for ${booking.car_title} from ${formattedStart} to ${formattedEnd}.`
 }
 
 function HistorySection({

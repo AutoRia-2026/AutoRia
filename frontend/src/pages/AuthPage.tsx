@@ -58,8 +58,24 @@ function AuthPage(props: AuthPageProps) {
           <button type="button" onClick={props.openSell}>Sell</button>
         </nav>
         <div className="drive-header-icons">
-          <button type="button" onClick={() => props.user ? props.setPageProfile() : props.openAuth()}>Fav</button>
-          <button type="button" onClick={props.openSupport}>?</button>
+          <button
+            type="button"
+            className="header-circle-button"
+            onClick={() => props.user ? props.setPageProfile() : props.openAuth()}
+            aria-label="Favorites"
+            title="Favorites"
+          >
+            {'♡'}
+          </button>
+          <button
+            type="button"
+            className="header-circle-button"
+            onClick={props.openSupport}
+            aria-label="Help"
+            title="Help"
+          >
+            ?
+          </button>
         </div>
       </header>
       <section className="drive-auth-layout">

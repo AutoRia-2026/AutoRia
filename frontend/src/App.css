@@ -1085,22 +1085,75 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 9px;
+  gap: 10px;
 }
 
 .buy-header-actions button {
-  min-height: 25px;
-  border: 1px solid rgba(255, 255, 255, 0.36);
-  border-radius: 7px;
-  padding: 0 10px;
+  min-height: 34px;
+  border: 1px solid rgba(160, 177, 210, 0.34);
+  border-radius: 999px;
+  padding: 0 13px;
+  background: rgba(16, 27, 47, 0.68);
+  color: #ffffff;
   font-size: 12px;
+  backdrop-filter: blur(10px);
 }
 
-.buy-header-actions button:first-child,
-.buy-header-actions button:nth-child(2) {
-  width: 26px;
+.buy-header-actions .header-circle-button,
+.drive-header-icons .header-circle-button {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(178, 195, 226, 0.42);
   border-radius: 50%;
   padding: 0;
+  background: rgba(16, 27, 47, 0.72);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.buy-header-actions .header-circle-button:hover,
+.drive-header-icons .header-circle-button:hover,
+.profile-avatar-button:hover {
+  border-color: rgba(218, 228, 246, 0.78);
+  background: #223b73;
+  color: #ffffff;
+  box-shadow: 0 12px 26px rgba(45, 79, 154, 0.28);
+}
+
+.buy-header-actions .profile-avatar-button {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(178, 195, 226, 0.48);
+  border-radius: 50%;
+  padding: 0;
+  background: #1b2c4f;
+}
+
+.profile-avatar-button img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.profile-avatar-initial {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #2d4f9a, #516a9d);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .buy-page {

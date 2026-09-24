@@ -365,7 +365,7 @@ function App() {
   }, [page, profileSection, token])
 
   useEffect(() => {
-    if (!token || page !== 'profile' || profileSection !== 'bookings') {
+    if (!token || page !== 'profile' || !['bookings', 'notifications'].includes(profileSection)) {
       return
     }
 
