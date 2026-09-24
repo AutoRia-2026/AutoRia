@@ -823,7 +823,9 @@ function App() {
       })
       setPassword('')
       setConfirmPassword('')
+      setCode('')
       changeAuthScreen('signup-code')
+      setMessage('Verification code sent to your email.')
     } catch (requestError) {
       setError(parseApiError(requestError))
     } finally {
@@ -844,8 +846,8 @@ function App() {
       setCode('')
       setPassword('')
       setConfirmPassword('')
-      setAuthScreen('login')
       setMessage('Account created. Please sign in.')
+      setAuthScreen('login')
     } catch (requestError) {
       setError(parseApiError(requestError))
     } finally {
@@ -863,6 +865,7 @@ function App() {
         method: 'POST',
         body: JSON.stringify({ email }),
       })
+      setCode('')
       changeAuthScreen('check-email')
     } catch (requestError) {
       setError(parseApiError(requestError))

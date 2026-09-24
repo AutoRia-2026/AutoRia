@@ -71,6 +71,40 @@ class AccountVerificationTests(APITestCase):
         self.assertTrue(user.is_active)
         self.assertTrue(verification.is_used)
 
+    def test_unverified_user_cannot_login_before_email_code(self):
+        user = get_user_model().objects.create_user(
+            username='inactiveuser',
+            email='inactive@example.com',
+            password='StrongPass123',
+            is_active=False,
+        )
+        verification = EmailVerificationCode.objects.create(
+            user=user,
+            code='123456',
+            purpose=EmailVerificationCode.PURPOSE_REGISTER,
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+
+        login_response = self.client.post(
+            '/api/auth/login/',
+            {'email': user.email, 'password': 'StrongPass123'},
+            format='json',
+        )
+        verify_response = self.client.post(
+            '/api/auth/verify-email/',
+            {'email': user.email, 'code': verification.code},
+            format='json',
+        )
+        verified_login_response = self.client.post(
+            '/api/auth/login/',
+            {'email': user.email, 'password': 'StrongPass123'},
+            format='json',
+        )
+
+        self.assertEqual(login_response.status_code, 400)
+        self.assertEqual(verify_response.status_code, 200)
+        self.assertEqual(verified_login_response.status_code, 200)
+
     def test_reset_password_changes_user_password(self):
         user = get_user_model().objects.create_user(
             username='resetuser',
